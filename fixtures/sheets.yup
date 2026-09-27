@@ -7,3 +7,5 @@ My Model	2	2	=B1*(1+Inputs!B1)
 It's here	1	1	='My Model'!B2*2	columnwidth=default
 It's here	2	1	=SUM('My Model'!B1:B2)	
 Inputs	2	2	='It''s here'!A1-Inputs!B1	
+_x0041_ data	1	1	#21	columnwidth=default
+Inputs	3	2	='_x0041_ data'!A1*2	

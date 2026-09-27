@@ -28,3 +28,4 @@ Formats	1	6	$One	columnwidth=1
 Formats	1	7	$Widest	columnwidth=255
 Formats	1	8	$Same as next	columnwidth=10
 Formats	1	9	$Same as last	columnwidth=10
+Formats	19	2	#5	numberformat=0" _x0041_"

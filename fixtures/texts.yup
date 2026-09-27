@@ -19,3 +19,4 @@ Texts	17	1	$trailing
 Texts	18	1	$001	
 Texts	19	1	=A1&A18	
 Texts	20	1	=LEN(A6)	
+Texts	21	1	="_x0041_"&"b"	

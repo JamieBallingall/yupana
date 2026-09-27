@@ -87,7 +87,8 @@ def escape_text(text: str) -> str:
     """Text as element content: the ``_xHHHH_`` rule, then XML escaping.
 
     xlsx decodes ``_x`` followed by four hexadecimal digits and ``_`` as a character, so
-    that exact shape, and only it, has its ``_x`` written as ``_x005F_x``.
+    that exact shape, and only it, has its ``_x`` written as ``_x005F_x``. The app
+    decodes it in shared strings and in formula text alike.
 
     >>> escape_text("_x000D_ & max_x < a_xb")
     '_x005F_x000D_ &amp; max_x &lt; a_xb'
@@ -97,13 +98,15 @@ def escape_text(text: str) -> str:
 
 
 def escape_attribute(text: str) -> str:
-    """Text as an attribute value in double quotes.
+    """Text as an attribute value in double quotes: as element content, and ``"`` too.
 
-    >>> print(escape_attribute('It\\'s "here" & <there>'))
-    It's &quot;here&quot; &amp; &lt;there&gt;
+    The app decodes the ``_xHHHH_`` shape in a sheet name and in a number format code as
+    well, so the same rule applies.
+
+    >>> print(escape_attribute('It\\'s "here" & <there> _x0041_'))
+    It's &quot;here&quot; &amp; &lt;there&gt; _x005F_x0041_
     """
-    escaped = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    return escaped.replace('"', "&quot;")
+    return escape_text(text).replace('"', "&quot;")
 
 
 def stored_width(width: float) -> float:

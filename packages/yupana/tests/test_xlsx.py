@@ -91,8 +91,20 @@ def test_text_escaping_applies_the_x_rule_then_xml(text: str, escaped: str) -> N
     assert escape_text(text) == escaped
 
 
-def test_attribute_escaping_also_escapes_double_quotes() -> None:
+def test_attribute_escaping_also_escapes_double_quotes_and_the_x_shape() -> None:
     assert escape_attribute('a"b&c<d>e') == "a&quot;b&amp;c&lt;d&gt;e"
+    assert escape_attribute("_x0041_ max_x") == "_x005F_x0041_ max_x"
+
+
+def test_a_sheet_name_and_a_format_code_with_the_x_shape_are_escaped() -> None:
+    text = yup(
+        'a_x0041_b	1	1	#1	columnwidth=default|numberformat=0" _x0042_"',
+        "Other	1	1	='a_x0041_b'!A1	columnwidth=default",
+    )
+    found = parts(text)
+    assert 'name="a_x005F_x0041_b"' in found["xl/workbook.xml"]
+    assert 'formatCode="0&quot; _x005F_x0042_&quot;"' in found["xl/styles.xml"]
+    assert "<f>'a_x005F_x0041_b'!A1</f>" in found["xl/worksheets/sheet2.xml"]
 
 
 # The container.

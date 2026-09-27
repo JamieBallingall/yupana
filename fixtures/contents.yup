@@ -31,3 +31,5 @@ Contents	15	1	$formula logical
 Contents	15	2	=B11	
 Contents	16	1	$empty text	
 Contents	16	2	=""	
+Contents	17	1	$largest double	
+Contents	17	2	#1.7976931348623157e308	

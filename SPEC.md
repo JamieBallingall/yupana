@@ -49,11 +49,10 @@ The sheet's name.
 - None of `:` `\` `/` `?` `*` `[` `]`.
 - Does not start or end with an apostrophe. One inside is fine.
 - Not `History`, in any case: the spreadsheet app reserves it.
-- Does not contain `_x` (with a lowercase `x`) followed by four hexadecimal digits and `_`. The xlsx format decodes that
-  shape in text, so it is refused in a sheet name rather than risk its being decoded.
 - Sheet names are compared **case-insensitively**, by Unicode case folding: `Data` and `data` name
-  the same sheet, so a file that spells one sheet two ways is an error. Case folding equates more
-  than some apps do (`Straße` and `STRASSE`), which refuses more rather than less.
+  the same sheet, so a file that spells one sheet two ways is an error. This is how the
+  spreadsheet app compares them when it opens a file: it refuses a workbook holding both `Straße`
+  and `STRASSE`, or both `σ` and `ς`.
 - Leading and trailing spaces are part of the name.
 - Sheets appear in the workbook in the order of their first appearance in the file.
 
@@ -78,8 +77,8 @@ Anything else is an error. Further:
 - A number that is not zero, but so small it reads as zero, is an error: `#1e-400`.
 - A number that is not zero but smaller in magnitude than 2.2250738585072014e-308 (a subnormal) is
   an error, since the spreadsheet app stores it as zero.
-- A number larger in magnitude than 9.99999999999999e307 is an error. That is the largest the
-  spreadsheet app accepts.
+- A number too large to be a double is an error: `#1e309`. Every finite double is fine, up to
+  1.7976931348623157e308.
 - So `+1`, `.5`, `1.`, `1_000`, `inf`, `nan` and `0x10` are all errors.
 - A text may begin with any character: `$=not a formula` is the text `=not a formula`.
 - There are **no error constants**: `#N/A` reads as a malformed number. A cell that must hold an
@@ -124,8 +123,9 @@ spreadsheet app and the xlsx writer both handle:
   it: `'My Sheet'!A1`.
 - **Defined before use.** Every cell a formula refers to, including every cell of a range, is on an
   earlier line. So there are no circular references, and a file computes from top to bottom.
-- **A number written inside a formula may lose precision:** the spreadsheet app keeps about 15
-  significant digits of it, while a number cell keeps the full double. A writer that needs an exact
+- **A number written inside a formula loses precision:** the spreadsheet app keeps only 15
+  significant digits of it (`=0.3333333333333333*3` computes as `=0.333333333333333*3`), while a
+  number cell keeps the full double. A writer that needs an exact
   constant puts it in a cell of its own.
 
 ## The values CSV

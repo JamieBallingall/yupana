@@ -40,7 +40,6 @@ MAX_FORMULA = 8_192
 MAX_INDENT = 250
 MAX_COLUMN_WIDTH = 255.0
 SMALLEST_NORMAL = 2.2250738585072014e-308
-LARGEST = 9.99999999999999e307
 
 _INTEGER = re.compile(r"[1-9][0-9]*")
 JSON_NUMBER = re.compile(r"-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?")
@@ -170,11 +169,6 @@ def sheet_name_problems(name: str) -> tuple[str, ...]:
         problems.append(f"sheet name {quoted(name)} starts or ends with an apostrophe")
     if name.casefold() == "history":
         problems.append(f"sheet name {quoted(name)} is reserved by the spreadsheet app")
-    if shape := ESCAPE_SHAPE.search(name):
-        problems.append(
-            f"sheet name {quoted(name)} contains {quoted(shape.group())}, "
-            "which xlsx would decode as a character"
-        )
     if bad := bad_character(name):
         problems.append(f"sheet name {quoted(name)} contains the character {bad}")
     return tuple(problems)
@@ -202,8 +196,8 @@ def _number(text: str) -> Result[float, str]:
         return Err(f"a number is written in JSON's grammar, not {quoted(text)}")
     value = float(text)
     mantissa = re.split("[eE]", text)[0]
-    if not math.isfinite(value) or abs(value) > LARGEST:
-        return Err(f"the number {text} is larger in magnitude than {LARGEST!r}")
+    if not math.isfinite(value):
+        return Err(f"the number {text} is too large to be a double")
     if value == 0 and any(digit in mantissa for digit in "123456789"):
         return Err(f"the number {text} is too small, and would be stored as zero")
     if value != 0 and abs(value) < SMALLEST_NORMAL:
