@@ -140,6 +140,21 @@ def test_more_spellings(code: str, spelled: str) -> None:
     assert canonical(code) == Ok(spelled)
 
 
+@pytest.mark.parametrize(
+    ("code", "spelled"),
+    [
+        ("_(#,##0.0_);(#,##0.0);_(-_)", "_(#,##0.0_);\\(#,##0.0\\);_(\\-_)"),
+        # Without the second _, the first section ends in a literal ")".
+        ("_(#,##0.0);(#,##0.0);_(-_)", "_(#,##0.0\\);\\(#,##0.0\\);_(\\-_)"),
+    ],
+)
+def test_an_accounting_format_is_spelled_as_the_app_spells_it(
+    code: str, spelled: str
+) -> None:
+    """A common format for financial statements, asked of the app on 2026-09-27."""
+    assert canonical(code) == Ok(spelled)
+
+
 def test_grouping_pads_to_four_and_groups_by_threes() -> None:
     assert [grouped(p) for p in ("#", "0", "##0", "0000", "#####0", "######0")] == [
         "#,###",

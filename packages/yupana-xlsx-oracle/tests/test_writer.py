@@ -73,6 +73,32 @@ def test_the_writers_workbook_with_one_cell_written_twice_is_refused(
 
 
 @pytest.mark.app
+@pytest.mark.parametrize(
+    ("code", "shown"),
+    [
+        ("_(#,##0.0_);(#,##0.0);_(-_)", [" 1,234.5 ", "(1,234.5)", " - "]),
+        ("_(#,##0.0);(#,##0.0);_(-_)", [" 1,234.5)", "(1,234.5)", " - "]),
+    ],
+)
+def test_an_accounting_format_shows_as_the_app_shows_it(
+    session: Session, code: str, shown: list[str]
+) -> None:
+    text = (
+        "sheet\trow\tcol\tcell\tformat\n"
+        f"S\t1\t1\t#1234.5\tcolumnwidth=14|numberformat={code}\n"
+        f"S\t2\t1\t#-1234.5\tnumberformat={code}\n"
+        f"S\t3\t1\t#0\tnumberformat={code}\n"
+    )
+    path = TARGET / "accounting.xlsx"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_xlsx_file(read_yup(text).unwrap(), path).unwrap()
+    workbook = session.app.Workbooks.Open(str(path), UpdateLinks=0, ReadOnly=True)
+    found = [workbook.Worksheets(1).Cells(row, 1).Text for row in (1, 2, 3)]
+    workbook.Close(SaveChanges=False)
+    assert found == shown
+
+
+@pytest.mark.app
 def test_side_by_side_workbooks_for_a_human_to_compare(session: Session) -> None:
     """Both renderings of every fixture, for comparing by eye in the app:
     ``target/side-by-side/<name>.writer.xlsx`` and ``<name>.app.xlsx``."""
