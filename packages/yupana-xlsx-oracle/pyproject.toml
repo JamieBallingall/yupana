@@ -10,6 +10,9 @@ dependencies = [
     "yupana",
 ]
 
+[project.scripts]
+yupana-xlsx-oracle = "yupana_xlsx_oracle.cli:run"
+
 [build-system]
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
