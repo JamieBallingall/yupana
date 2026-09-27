@@ -17,3 +17,7 @@ dev = [
     "ruff>=0.16.9",
     "ty==0.0.84",
 ]
+
+[tool.ruff]
+# The workspace root has no [project], so ruff cannot read requires-python from it.
+target-version = "py314"
