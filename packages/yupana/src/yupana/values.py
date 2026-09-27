@@ -1,5 +1,7 @@
 """The values CSV: the value computed for every cell of a ``.yup`` file.
 
+An internal format for testing, specified in ``values-csv.md`` beside this package.
+
 >>> values = (
 ...     Value("Model", 1, 1, Type.TEXT, "Year"),
 ...     Value("Model", 1, 2, Type.NUMBER, number_text(2026.0)),

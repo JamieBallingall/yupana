@@ -1,10 +1,10 @@
-# The `.yup` format and the values CSV
+# The `.yup` format
 
-Version 1. **Not yet stable:** a later version may change anything here.
+Version 0.0.1. **Not yet stable:** a later version may change anything, or everything, here.
 
 A `.yup` file lists the cells of a workbook, one per line: what is in each cell and how it is
-formatted. It is a straight-line program laid out on a grid. A values CSV lists, for every cell of
-a `.yup` file, the value computed for it.
+formatted. It is a [straight-line program](https://en.wikipedia.org/wiki/Straight-line_program)
+intended to be laid out on a grid.
 
 In the examples below, `→` stands for a tab. Real tabs do not survive copying from rendered text.
 
@@ -125,42 +125,5 @@ spreadsheet app and the xlsx writer both handle:
   earlier line. So there are no circular references, and a file computes from top to bottom.
 - **A number written inside a formula loses precision:** the spreadsheet app keeps only 15
   significant digits of it (`=0.3333333333333333*3` computes as `=0.333333333333333*3`), while a
-  number cell keeps the full double. A writer that needs an exact
-  constant puts it in a cell of its own.
-
-## The values CSV
-
-The value computed for every cell of a `.yup` file.
-
-- CSV with RFC 4180 quoting, UTF-8 with no byte-order mark, and LF line endings.
-- The header is `sheet,row,col,type,value`.
-- One line per cell of the `.yup` file, in the same order.
-- `type` is the code of the spreadsheet function `TYPE`, and `value` is written accordingly:
-
-| `type` | Means | `value` |
-|---|---|---|
-| `1` | number | The shortest text that reads back as the same double, as Python's `repr` writes it: `23.0`, `0.1`, `1e-300`, `-0.0`. Never `nan` or `inf` |
-| `2` | text | The text itself, exactly. CSV quoting carries commas, quotes, tabs and newlines |
-| `4` | logical | `TRUE` or `FALSE` |
-| `16` | error | The error as the app shows it: `#N/A`, `#DIV/0!`, `#VALUE!`, `#REF!`, `#NAME?`, `#NUM!`, `#NULL!`. Any text starting with `#` is accepted, since apps have more |
-
-There is no blank: every listed cell was written, and a formula that returns empty text has type
-`2` and an empty value.
-
-The values CSV for the example `.yup` file above:
-
-```text
-sheet,row,col,type,value
-Model,1,1,2,Year
-Model,1,2,1,2026.0
-Model,2,1,2,Revenue
-Model,2,2,1,1000.0
-Model,3,1,2,Growth
-Model,3,2,1,0.08
-Model,4,1,2,Next year
-Model,4,2,1,1080.0
-```
-
-A reader of a values CSV checks the header, that every line has five fields, that `row` and `col`
-are written as in `.yup`, that `type` is one of the four codes, and that each `value` suits its
-type: a number in JSON's grammar that is finite, `TRUE` or `FALSE`, or text starting with `#`.
+  number cell keeps the full double. A writer that needs an exact constant puts it in a cell of its
+  own.

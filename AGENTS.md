@@ -66,7 +66,9 @@ read the other one, but never change it from here.
 - The oracle depends on `yupana` and on `pywin32` behind `sys_platform == 'win32'`, and imports
   `pywin32` lazily, inside the functions that need it, so it installs and its pure tests run
   anywhere. Its tests marked `app` need Windows with the spreadsheet app installed.
-- `SPEC.md` is the specification of the `.yup` and values-CSV formats, and the document other
-  projects cite. The reader enforces exactly what it states.
+- `SPEC.md` is the specification of the `.yup` format, and the document other projects cite. The
+  reader enforces exactly what it states.
+- `packages/yupana/values-csv.md` specifies the values CSV, an internal format for testing. It is
+  kept out of `SPEC.md` so that the standard stays about `.yup` alone.
 - `plan/`, when present, is the working plan. It is never committed. A step in it is one commit.
   Where the plan and the code disagree, the code wins, and the plan is updated.

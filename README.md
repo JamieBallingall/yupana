@@ -5,7 +5,7 @@ cell is, what is in it, and how it is formatted. `yupana` reads a `.yup` file, c
 [the specification](SPEC.md), reporting every problem at once, and writes it as an xlsx workbook
 of live formulas.
 
-**Not stable yet.** The format is at version 1, and it, the API and the names may all change.
+**Not stable yet.** The format is at version 0.0.1, and it, the API and the names may all change.
 
 ## Why
 
@@ -28,7 +28,7 @@ Model→2→2→=B1*(1+0.08)→numberformat=#,##0.0
 
 A cell starts with `=` for a formula, `#` for a number, `$` for text, or `?` for `TRUE` or
 `FALSE`. The format holds a number format, an indent and a column width. [`SPEC.md`](SPEC.md) has
-every rule, and the values CSV that goes with a `.yup` file.
+every rule.
 
 ## Use
 
