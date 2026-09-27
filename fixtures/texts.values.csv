@@ -1,0 +1,21 @@
+sheet,row,col,type,value
+Texts,1,1,2,001
+Texts,2,1,2,1/2
+Texts,3,1,2,TRUE
+Texts,4,1,2,=1+1
+Texts,5,1,2,#N/A
+Texts,6,1,2,  padded  
+Texts,7,1,2,50%
+Texts,8,1,2,1e5
+Texts,9,1,2,$5
+Texts,10,1,2,'quoted
+Texts,11,1,2,_x0041_
+Texts,12,1,2,_x000D_ and _X0041_
+Texts,13,1,2,max_x a_xb _x41_ _x00411_
+Texts,14,1,2,"a & b < c > d ""e"""
+Texts,15,1,2,café £ € 中 😀
+Texts,16,1,2, leading
+Texts,17,1,2,trailing 
+Texts,18,1,2,001
+Texts,19,1,2,001001
+Texts,20,1,1,10.0

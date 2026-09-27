@@ -1,0 +1,9 @@
+sheet,row,col,type,value
+Inputs,1,1,2,Rate
+Inputs,1,2,1,0.05
+My Model,1,1,2,Base
+My Model,1,2,1,200.0
+My Model,2,2,1,210.0
+It's here,1,1,1,420.0
+It's here,2,1,1,410.0
+Inputs,2,2,1,419.95

@@ -1,0 +1,9 @@
+sheet,row,col,type,value
+Errors,1,1,16,#NULL!
+Errors,2,1,16,#DIV/0!
+Errors,3,1,16,#VALUE!
+Errors,4,1,16,#REF!
+Errors,5,1,16,#NAME?
+Errors,6,1,16,#NUM!
+Errors,7,1,16,#N/A
+Errors,8,1,16,#DIV/0!

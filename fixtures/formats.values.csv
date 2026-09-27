@@ -1,0 +1,30 @@
+sheet,row,col,type,value
+Formats,1,1,2,Label
+Formats,2,1,2,Indented once
+Formats,3,1,2,Indented five
+Formats,4,1,2,Indented most
+Formats,1,2,1,1234.5678
+Formats,2,2,1,1234.5678
+Formats,3,2,1,1234.5678
+Formats,4,2,1,1234.5678
+Formats,5,2,1,0.1234
+Formats,6,2,1,0.1234
+Formats,7,2,1,-1234.5678
+Formats,8,2,1,1234.5678
+Formats,9,2,1,-1234.5678
+Formats,10,2,1,-1234.5678
+Formats,11,2,1,1234.5678
+Formats,12,2,1,12.5
+Formats,13,2,1,46023.0
+Formats,14,2,1,46023.5
+Formats,15,2,1,-5.0
+Formats,16,2,1,150.0
+Formats,17,2,2,text
+Formats,18,2,1,2469.1356
+Formats,1,3,2,Hidden
+Formats,1,4,2,Default
+Formats,1,5,2,Half
+Formats,1,6,2,One
+Formats,1,7,2,Widest
+Formats,1,8,2,Same as next
+Formats,1,9,2,Same as last

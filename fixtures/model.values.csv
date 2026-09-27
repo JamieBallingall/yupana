@@ -1,0 +1,27 @@
+sheet,row,col,type,value
+Model,1,1,2,Year
+Model,1,2,1,2026.0
+Model,1,3,1,2027.0
+Model,1,4,1,2028.0
+Model,2,1,2,Revenue
+Model,2,2,1,1000.0
+Model,3,1,2,Growth
+Model,3,2,1,0.08
+Model,3,3,1,0.08
+Model,3,4,1,0.08
+Model,2,3,1,1080.0
+Model,2,4,1,1166.4
+Model,4,1,2,Costs
+Model,4,2,1,-620.0
+Model,4,3,1,-669.6
+Model,4,4,1,-723.168
+Model,5,1,2,Profit
+Model,5,2,1,380.0
+Model,5,3,1,410.4
+Model,5,4,1,443.2320000000001
+Model,6,1,2,Total profit
+Model,6,4,1,1233.632
+Model,7,1,2,Worst year
+Model,7,4,1,380.0
+Model,8,1,2,Profitable
+Model,8,4,4,TRUE
