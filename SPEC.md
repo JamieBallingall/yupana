@@ -37,9 +37,10 @@ Model→4→2→=B2*(1+B3)→numberformat=#,##0.0;(#,##0.0)
 
 ### Characters
 
-Every sheet name and every text:
+Every sheet name, text, formula and number format:
 - contains no C0 control character (U+0000 to U+001F), and not U+007F;
-- contains neither U+FFFE nor U+FFFF, which XML 1.0 cannot carry.
+- contains neither U+FFFE nor U+FFFF, which XML 1.0 cannot carry;
+- contains no surrogate code point (U+D800 to U+DFFF), which UTF-8 cannot encode.
 
 ### `sheet`
 
@@ -48,7 +49,7 @@ The sheet's name.
 - None of `:` `\` `/` `?` `*` `[` `]`.
 - Does not start or end with an apostrophe. One inside is fine.
 - Not `History`, in any case: the spreadsheet app reserves it.
-- Does not contain `_x` followed by four hexadecimal digits and `_`. The xlsx format decodes that
+- Does not contain `_x` (with a lowercase `x`) followed by four hexadecimal digits and `_`. The xlsx format decodes that
   shape in text, so it is refused in a sheet name rather than risk its being decoded.
 - Sheet names are compared **case-insensitively**, by Unicode case folding: `Data` and `data` name
   the same sheet, so a file that spells one sheet two ways is an error. Case folding equates more
@@ -67,13 +68,14 @@ What is in the cell. Its first character says what kind of thing it is.
 
 | First character | Kind | The rest |
 |---|---|---|
-| `=` | formula | A1-notation formula text, such as `=B2*(1+B3)`. At least one character after the `=` |
+| `=` | formula | A1-notation formula text, such as `=B2*(1+B3)`. At least one character after the `=`, and at most 8,192 UTF-16 code units in all |
 | `#` | number | A number in JSON's grammar: `-?(0\|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?` |
 | `$` | text | The text itself: at least 1 and at most 32,767 UTF-16 code units |
 | `?` | logical | Exactly `TRUE` or `FALSE` |
 
 Anything else is an error. Further:
 - A number is **finite** once parsed: `#1e999` is an error.
+- A number that is not zero, but so small it reads as zero, is an error: `#1e-400`.
 - A number that is not zero but smaller in magnitude than 2.2250738585072014e-308 (a subnormal) is
   an error, since the spreadsheet app stores it as zero.
 - A number larger in magnitude than 9.99999999999999e307 is an error. That is the largest the
@@ -122,7 +124,6 @@ spreadsheet app and the xlsx writer both handle:
   it: `'My Sheet'!A1`.
 - **Defined before use.** Every cell a formula refers to, including every cell of a range, is on an
   earlier line. So there are no circular references, and a file computes from top to bottom.
-- A formula is at most 8,192 UTF-16 code units.
 - **A number written inside a formula may lose precision:** the spreadsheet app keeps about 15
   significant digits of it, while a number cell keeps the full double. A writer that needs an exact
   constant puts it in a cell of its own.
