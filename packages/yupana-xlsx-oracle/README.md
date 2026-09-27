@@ -29,12 +29,12 @@ Values go to `--values` or to standard output; problems go to standard error. Th
 The app runs as a private, hidden instance, never the one you have open, and a dialog can never
 hang a command: a call that does not return in time is reported as stalled.
 
-## The machine
+## Regional settings
 
-The app's behaviour recorded in this package was established on one machine, set to:
-
-- regional format: en-US;
-- display scaling: 100%.
+The app's behaviour recorded here was established with the app using en-US's number and date
+conventions: `.` for decimals, `,` for thousands, and dates month first. What the app shows for a
+number or a date depends on them, so the tests marked `app` check them first, and are skipped,
+saying why, where they differ.
 
 ## What the app was found to do
 

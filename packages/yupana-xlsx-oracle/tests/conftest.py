@@ -1,10 +1,11 @@
-"""Tests marked ``app`` run only on Windows with pywin32 and the spreadsheet app."""
+"""Tests marked ``app`` run only on Windows with pywin32 and the spreadsheet app, set to
+en-US's number and date conventions."""
 
 import importlib.util
 import sys
 
 import pytest
-from yupana_xlsx_oracle.session import app_installed
+from yupana_xlsx_oracle.session import Session, app_installed
 
 
 def _app_available() -> bool:
@@ -15,10 +16,27 @@ def _app_available() -> bool:
     )
 
 
+def _why_not(items: list[pytest.Item]) -> str | None:
+    """Why the tests marked ``app`` cannot run, or ``None`` if they can.
+
+    The app is started only when such a test was collected.
+    """
+    if not any("app" in item.keywords for item in items):
+        return None
+    if not _app_available():
+        return "needs Windows, pywin32 and the spreadsheet app"
+    with Session() as session:
+        unlike = session.unlike_en_us()
+    if unlike:
+        return "needs the app set to en-US's conventions: " + "; ".join(unlike)
+    return None
+
+
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
-    if _app_available():
+    reason = _why_not(items)
+    if reason is None:
         return
-    skip = pytest.mark.skip(reason="needs Windows, pywin32 and the spreadsheet app")
+    skip = pytest.mark.skip(reason=reason)
     for item in items:
         if "app" in item.keywords:
             item.add_marker(skip)

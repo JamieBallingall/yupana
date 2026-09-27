@@ -24,6 +24,11 @@ IMAGE = "EXCEL.EXE"
 _NO_WINDOW = 0x08000000
 _CALCULATION_AUTOMATIC = -4105
 _MACROS_NEVER_RUN = 3
+# Positions in the app's International array, counted from 1 as the app counts them.
+_DECIMAL_SEPARATOR = 3
+_THOUSANDS_SEPARATOR = 4
+_DATE_ORDER = 32
+_MONTH_FIRST = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,6 +201,25 @@ class Session:
             self.app.CalculateFullRebuild()
 
         return self.guarded("recalculating", self.timeouts.calculate, calculate)
+
+    def unlike_en_us(self) -> tuple[str, ...]:
+        """Every way the app's number and date conventions differ from en-US's.
+
+        The app's behaviour recorded in this package was established under en-US's, and
+        what the app shows for a number or date depends on them.
+        """
+        # Asked for without an argument, COM hands over the whole array.
+        settings = self.app.International
+        expected = {
+            "decimal separator": (_DECIMAL_SEPARATOR, "."),
+            "thousands separator": (_THOUSANDS_SEPARATOR, ","),
+            "date order": (_DATE_ORDER, _MONTH_FIRST),
+        }
+        return tuple(
+            f"its {name} is {settings[place - 1]!r}, not {value!r}"
+            for name, (place, value) in expected.items()
+            if settings[place - 1] != value
+        )
 
     def _close(self) -> None:
         for workbook in list(self.app.Workbooks):

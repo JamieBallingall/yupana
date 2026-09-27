@@ -1,10 +1,26 @@
 """The session: it starts, it stops quickly, and a stall never hangs its caller."""
 
 import time
+from types import SimpleNamespace
 
 import pytest
 from yupana.result import Err, Ok
 from yupana_xlsx_oracle.session import Session, Stalled, Timeouts, app_processes
+
+
+def test_conventions_unlike_en_us_are_each_named() -> None:
+    session = Session()
+    settings = [None] * 45
+    settings[2], settings[3], settings[31] = ",", ".", 1.0
+    session.app = SimpleNamespace(International=tuple(settings))
+    assert session.unlike_en_us() == (
+        "its decimal separator is ',', not '.'",
+        "its thousands separator is '.', not ','",
+        "its date order is 1.0, not 0",
+    )
+    settings[2], settings[3], settings[31] = ".", ",", 0.0
+    session.app = SimpleNamespace(International=tuple(settings))
+    assert session.unlike_en_us() == ()
 
 
 @pytest.mark.app

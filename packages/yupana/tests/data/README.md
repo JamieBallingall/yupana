@@ -11,5 +11,5 @@ workbook holding it opens in the app: the writer's own spelling for a code it wr
 code edited into an otherwise good workbook for a code it refuses. Every workbook the writer
 wrote opened. Most refused codes make the app refuse the whole file.
 
-Gathered on 2026-09-27 with `yupana-xlsx-oracle`'s session, on a machine set to regional format
-en-US and display scaling 100%.
+Gathered on 2026-09-27 with `yupana-xlsx-oracle`'s session, with the app using en-US's number and
+date conventions, as that package's README describes.
