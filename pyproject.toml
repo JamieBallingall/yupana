@@ -2,7 +2,9 @@
 members = ["packages/*"]
 
 [tool.pytest.ini_options]
-addopts = "--doctest-modules --import-mode=importlib"
+# faulthandler prints every first-chance Windows exception, and releasing a COM object
+# after its process is killed, as the session's teardown does, raises one that COM handles.
+addopts = "--doctest-modules --import-mode=importlib -p no:faulthandler"
 doctest_optionflags = "ELLIPSIS"
 testpaths = [
     "packages/yupana/src/yupana",
@@ -10,12 +12,14 @@ testpaths = [
     "packages/yupana-xlsx-oracle/src/yupana_xlsx_oracle",
     "packages/yupana-xlsx-oracle/tests",
 ]
+markers = ["app: needs Windows, pywin32 and the spreadsheet app; skipped elsewhere"]
 
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.9",
     "ty==0.0.84",
+    "types-pywin32>=312.0.0.20260827",
 ]
 
 [tool.ruff]
