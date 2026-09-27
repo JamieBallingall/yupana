@@ -105,13 +105,21 @@ def test_sheets_are_named_and_ordered_and_refer_to_each_other(session: Session) 
         "My Model\t1\t1\t=Inputs!A1+2\tcolumnwidth=default",
         "It's\t1\t1\t='My Model'!A1/2\tcolumnwidth=default",
     )
-    assert build(session, read_yup(text).unwrap()) == Ok(
+    path = TARGET / "sheets.xlsx"
+    assert build(session, read_yup(text).unwrap(), path) == Ok(
         (
             Value("Inputs", 1, 1, Type.NUMBER, "40.0"),
             Value("My Model", 1, 1, Type.NUMBER, "42.0"),
             Value("It's", 1, 1, Type.NUMBER, "21.0"),
         )
     )
+    with zipfile.ZipFile(path) as archive:
+        listed = archive.read("xl/workbook.xml").decode()
+    assert re.findall(r'<sheet name="([^"]*)"', listed) == [
+        "Inputs",
+        "My Model",
+        "It's",
+    ]
 
 
 @pytest.mark.app

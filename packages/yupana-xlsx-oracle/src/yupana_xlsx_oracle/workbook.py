@@ -212,10 +212,12 @@ def build(
         made: dict[str, Any] = {}
         previous = None
         for name in yup.sheets:
+            # After is passed by position: named alone, it is dropped on the way through
+            # COM, and every new sheet goes before the active one instead.
             sheet = (
                 workbook.Worksheets(1)
                 if previous is None
-                else workbook.Worksheets.Add(After=previous)
+                else workbook.Worksheets.Add(None, previous)
             )
 
             def rename(sheet: Any = sheet, name: str = name) -> None:

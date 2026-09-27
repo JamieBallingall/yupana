@@ -108,4 +108,16 @@ def test_side_by_side_workbooks_for_a_human_to_compare(session: Session) -> None
         yup = read_yup(fixture(name)).unwrap()
         write_xlsx_file(yup, folder / f"{name}.writer.xlsx").unwrap()
         build(session, yup, folder / f"{name}.app.xlsx").unwrap()
+        for rendering in ("writer", "app"):
+            assert sheet_names(session, folder / f"{name}.{rendering}.xlsx") == list(
+                yup.sheets
+            ), f"{name}.{rendering}.xlsx"
     assert len(list(folder.glob("*.xlsx"))) == 2 * len(NAMES)
+
+
+def sheet_names(session: Session, path: Path) -> list[str]:
+    """The sheets of a workbook as the app lists them, left to right."""
+    workbook = session.app.Workbooks.Open(str(path), UpdateLinks=0, ReadOnly=True)
+    names = [sheet.Name for sheet in workbook.Worksheets]
+    workbook.Close(SaveChanges=False)
+    return names
