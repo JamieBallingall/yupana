@@ -20,9 +20,9 @@ from yupana.xlsx import (
     write_xlsx,
     write_xlsx_file,
 )
-from yupana.yup import read_yup
+from yupana.yup import PREAMBLE, read_yup
 
-HEAD = "sheet\trow\tcol\tcell\tformat\n"
+HEAD = PREAMBLE
 DECLARATION = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
 
 
@@ -353,10 +353,10 @@ def test_a_number_format_that_cannot_be_written_is_refused_naming_each_cell() ->
     )
     match write_xlsx(read_yup(text).unwrap()):
         case Err((first, second)):
-            assert first.line == 2
-            assert str(first).startswith('line 2: sheet "S", row 1, col 1: ')
+            assert first.line == 3
+            assert str(first).startswith('line 3: sheet "S", row 1, col 1: ')
             assert "the number format '0.0x' cannot be written" in str(first)
-            assert second.line == 4
+            assert second.line == 5
         case other:
             raise AssertionError(f"expected two refusals, not {other}")
 

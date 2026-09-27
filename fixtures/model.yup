@@ -1,3 +1,4 @@
+yup 0.0.1 Yupana Straight Line Spreadsheet Format
 sheet	row	col	cell	format
 Model	1	1	$Year	columnwidth=34
 Model	1	2	#2026	columnwidth=10|numberformat=0

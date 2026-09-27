@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 from yupana.result import Err
-from yupana.yup import read_yup
+from yupana.yup import PREAMBLE, read_yup
 from yupana_xlsx_oracle.errors import FileProblem, Refused
 from yupana_xlsx_oracle.session import Session
 from yupana_xlsx_oracle.workbook import build, read
@@ -17,7 +17,7 @@ MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 PACKAGE = "http://schemas.openxmlformats.org/package/2006/relationships"
 SHEETML = "application/vnd.openxmlformats-officedocument.spreadsheetml"
-YUP = "sheet\trow\tcol\tcell\tformat\nModel\t1\t1\t#1\tcolumnwidth=default\n"
+YUP = f"{PREAMBLE}Model\t1\t1\t#1\tcolumnwidth=default\n"
 
 
 def minimal_xlsx(cells: str) -> bytes:
@@ -72,8 +72,7 @@ def written(name: str, content: bytes) -> Path:
 @pytest.mark.app
 def test_a_workbook_the_app_saved_reads_to_the_same_values(session: Session) -> None:
     text = (
-        "sheet\trow\tcol\tcell\tformat\n"
-        "Inputs\t1\t1\t#40\tcolumnwidth=default\n"
+        PREAMBLE + "Inputs\t1\t1\t#40\tcolumnwidth=default\n"
         "Model\t1\t1\t=Inputs!A1+2\tcolumnwidth=10\n"
         "Model\t2\t1\t$001\t\n"
         "Model\t3\t1\t=1/0\t\n"

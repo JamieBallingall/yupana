@@ -8,8 +8,9 @@ from pathlib import Path
 
 import pytest
 from yupana.cli import main
+from yupana.yup import PREAMBLE
 
-GOOD = "sheet\trow\tcol\tcell\tformat\nModel\t1\t1\t$Year\tcolumnwidth=10\n"
+GOOD = f"{PREAMBLE}Model\t1\t1\t$Year\tcolumnwidth=10\n"
 
 
 def run(*argv: str) -> tuple[int, str, str]:
@@ -34,8 +35,8 @@ def test_check_reports_every_problem(tmp_path: Path) -> None:
     status, _, err = run("check", str(path))
     assert status == 1
     assert err.splitlines() == [
-        f'{path}: line 3: row must be a whole number from 1 to 1048576, not "0"',
-        f'{path}: line 3: a number is written in JSON\'s grammar, not "01"',
+        f'{path}: line 4: row must be a whole number from 1 to 1048576, not "0"',
+        f'{path}: line 4: a number is written in JSON\'s grammar, not "01"',
     ]
 
 
@@ -60,7 +61,7 @@ def test_xlsx_reports_every_refused_cell_and_writes_nothing(tmp_path: Path) -> N
     target = tmp_path / "model.xlsx"
     status, _, err = run("xlsx", str(source), str(target))
     assert status == 1
-    assert "line 2: " in err
+    assert "line 3: " in err
     assert "cannot be written" in err
     assert not target.exists()
 

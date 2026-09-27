@@ -6,12 +6,12 @@ import sys
 from pathlib import Path
 
 import pytest
+from yupana.yup import PREAMBLE
 from yupana_xlsx_oracle.cli import main
 
 TARGET = Path(__file__).resolve().parents[3] / "target" / "oracle-tests" / "cli"
 YUP = (
-    "sheet\trow\tcol\tcell\tformat\n"
-    "Model\t1\t1\t$Revenue\tcolumnwidth=20\n"
+    PREAMBLE + "Model\t1\t1\t$Revenue\tcolumnwidth=20\n"
     "Model\t1\t2\t#1000\tcolumnwidth=10|numberformat=#,##0\n"
     "Model\t2\t1\t$Next\t\n"
     "Model\t2\t2\t=B1*(1+0.08)\tnumberformat=#,##0\n"
@@ -61,8 +61,8 @@ def test_a_yup_file_that_does_not_read_is_reported_line_by_line() -> None:
     status, _, err = run("build", str(path))
     assert status == 1
     assert err.splitlines() == [
-        f'{path}: line 3: a number is written in JSON\'s grammar, not "01"',
-        f"{path}: line 5: a formula needs something after the =",
+        f'{path}: line 4: a number is written in JSON\'s grammar, not "01"',
+        f"{path}: line 6: a formula needs something after the =",
     ]
 
 

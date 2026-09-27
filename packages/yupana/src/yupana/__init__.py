@@ -6,6 +6,7 @@ The public names, re-exported here; ``Result`` and its variants live in ``yupana
 from yupana.values import Type, Value, ValuesError, read_values, write_values
 from yupana.xlsx import WriteError, write_xlsx, write_xlsx_file
 from yupana.yup import (
+    PREAMBLE,
     Cell,
     Content,
     Default,
@@ -20,6 +21,7 @@ from yupana.yup import (
 )
 
 __all__ = [
+    "PREAMBLE",
     "Cell",
     "Content",
     "Default",

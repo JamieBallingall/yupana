@@ -8,13 +8,13 @@ from pathlib import Path
 import pytest
 from yupana.result import Err, Ok
 from yupana.values import Type, Value
-from yupana.yup import read_yup
+from yupana.yup import PREAMBLE, read_yup
 from yupana_xlsx_oracle.errors import Rejected
 from yupana_xlsx_oracle.session import Session
 from yupana_xlsx_oracle.workbook import build
 
 TARGET = Path(__file__).resolve().parents[3] / "target" / "oracle-tests"
-HEAD = "sheet\trow\tcol\tcell\tformat\n"
+HEAD = PREAMBLE
 
 
 @pytest.fixture(scope="module")
@@ -78,7 +78,7 @@ def test_a_text_the_app_cannot_hold_is_rejected_not_truncated(session: Session) 
     text = yup("Model\t1\t1\t#1\tcolumnwidth=default", f"Model\t2\t1\t${long}\t")
     [rejected] = build(session, read_yup(text).unwrap()).unwrap_err()
     assert isinstance(rejected, Rejected)
-    assert (rejected.line, rejected.row) == (3, 2)
+    assert (rejected.line, rejected.row) == (4, 2)
     assert "starts with an apostrophe" in rejected.message
 
 
@@ -154,7 +154,7 @@ def test_a_number_format_the_app_rejects_is_an_error_on_that_cell(
         "Model\t2\t1\t#2\tnumberformat=0.0",
     )
     match build(session, read_yup(text).unwrap()):
-        case Err((Rejected(line=2, row=1, col=1, message=message),)):
+        case Err((Rejected(line=3, row=1, col=1, message=message),)):
             assert "the number format '0.00e+00'" in message
         case other:
             raise AssertionError(f"expected one rejected cell, not {other}")

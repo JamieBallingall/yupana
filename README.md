@@ -16,9 +16,11 @@ opens without complaint.
 
 ## A `.yup` file
 
-Tab-separated, with a header. Here `→` stands for a tab:
+A line naming the format and its version, then tab-separated lines with a header. Here `→`
+stands for a tab:
 
 ```text
+yup 0.0.1 Yupana Straight Line Spreadsheet Format
 sheet→row→col→cell→format
 Model→1→1→$Revenue→columnwidth=20
 Model→1→2→#1000→columnwidth=10|numberformat=#,##0.0

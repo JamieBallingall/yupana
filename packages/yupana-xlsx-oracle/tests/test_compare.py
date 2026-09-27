@@ -2,7 +2,7 @@
 
 import pytest
 from yupana.values import Type, Value
-from yupana.yup import read_yup
+from yupana.yup import PREAMBLE, read_yup
 from yupana_xlsx_oracle.compare import compare, misaligned
 
 N, T, L, E = Type.NUMBER, Type.TEXT, Type.LOGICAL, Type.ERROR
@@ -81,9 +81,7 @@ def test_every_disagreement_is_reported() -> None:
     assert [d.row for d in compare(got, want)] == [2, 3]
 
 
-YUP = read_yup(
-    "sheet\trow\tcol\tcell\tformat\nS\t1\t1\t#1\tcolumnwidth=default\nS\t2\t1\t#2\t\n"
-).unwrap()
+YUP = read_yup(f"{PREAMBLE}S\t1\t1\t#1\tcolumnwidth=default\nS\t2\t1\t#2\t\n").unwrap()
 
 
 def test_values_that_line_up_are_not_misaligned() -> None:
@@ -101,5 +99,5 @@ def test_cells_out_of_order_are_misaligned_at_the_first() -> None:
     [problem] = misaligned(YUP, values, "x.csv")
     assert str(problem) == (
         'x.csv: record 1 is sheet "S", row 2, col 1, '
-        'where line 2 of the .yup file is sheet "S", row 1, col 1'
+        'where line 3 of the .yup file is sheet "S", row 1, col 1'
     )

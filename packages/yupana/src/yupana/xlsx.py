@@ -6,8 +6,8 @@ Formula cells carry no cached value: the app computes everything when it opens t
 
 The output is deterministic: the same ``.yup`` gives the same bytes.
 
->>> from yupana.yup import read_yup
->>> yup = read_yup("sheet\\trow\\tcol\\tcell\\tformat\\nModel\\t1\\t1\\t#1\\tcolumnwidth=10\\n")
+>>> from yupana.yup import PREAMBLE, read_yup
+>>> yup = read_yup(PREAMBLE + "Model\\t1\\t1\\t#1\\tcolumnwidth=10\\n")
 >>> data = write_xlsx(yup.unwrap()).unwrap()
 >>> data[:2], data == write_xlsx(yup.unwrap()).unwrap()
 (b'PK', True)

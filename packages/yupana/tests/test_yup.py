@@ -3,6 +3,7 @@
 import pytest
 from yupana.result import Err, Ok
 from yupana.yup import (
+    PREAMBLE,
     Cell,
     Default,
     Format,
@@ -14,7 +15,7 @@ from yupana.yup import (
     read_yup,
 )
 
-HEAD = "sheet\trow\tcol\tcell\tformat\n"
+HEAD = PREAMBLE
 
 
 def yup(*lines: str) -> str:
@@ -49,14 +50,14 @@ def test_a_file_with_several_problems_reports_them_all() -> None:
         line("#1", "", sheet="model", row="4"),
     )
     assert errors(text) == [
-        'line 3: a number is written in JSON\'s grammar, not "01"',
-        'line 3: the first line for sheet "Model", col 2, must carry columnwidth',
-        'line 4: row must be a whole number from 1 to 1048576, not "0"',
-        'line 4: indent must be a whole number from 0 to 250, not "300"',
-        'line 5: a logical is TRUE or FALSE, not "maybe"',
-        'line 6: sheet name "Bad:Name" contains ":"',
-        'line 6: the first line for sheet "Bad:Name", col 1, must carry columnwidth',
-        'line 7: sheet "model" is spelled "Model" earlier',
+        'line 4: a number is written in JSON\'s grammar, not "01"',
+        'line 4: the first line for sheet "Model", col 2, must carry columnwidth',
+        'line 5: row must be a whole number from 1 to 1048576, not "0"',
+        'line 5: indent must be a whole number from 0 to 250, not "300"',
+        'line 6: a logical is TRUE or FALSE, not "maybe"',
+        'line 7: sheet name "Bad:Name" contains ":"',
+        'line 7: the first line for sheet "Bad:Name", col 1, must carry columnwidth',
+        'line 8: sheet "model" is spelled "Model" earlier',
     ]
 
 
@@ -79,9 +80,9 @@ def test_a_realistic_file_reads_to_exactly_its_cells() -> None:
         Yup(
             ("Model", "Inputs"),
             (
-                Cell(2, "Model", 1, 1, Text("Year"), Format(column_width=34.0)),
+                Cell(3, "Model", 1, 1, Text("Year"), Format(column_width=34.0)),
                 Cell(
-                    3,
+                    4,
                     "Model",
                     1,
                     2,
@@ -89,17 +90,17 @@ def test_a_realistic_file_reads_to_exactly_its_cells() -> None:
                     Format(number_format="0", column_width=10.0),
                 ),
                 Cell(
-                    4,
+                    5,
                     "Model",
                     1,
                     3,
                     Formula("=B1+1"),
                     Format(number_format="0", column_width=Default()),
                 ),
-                Cell(5, "Model", 2, 1, Text("Revenue"), Format()),
-                Cell(6, "Model", 2, 2, Number(1000.0), Format(number_format=money)),
+                Cell(6, "Model", 2, 1, Text("Revenue"), Format()),
+                Cell(7, "Model", 2, 2, Number(1000.0), Format(number_format=money)),
                 Cell(
-                    7,
+                    8,
                     "Inputs",
                     1,
                     1,
@@ -107,7 +108,7 @@ def test_a_realistic_file_reads_to_exactly_its_cells() -> None:
                     Format(indent=1, column_width=12.5),
                 ),
                 Cell(
-                    8,
+                    9,
                     "Inputs",
                     1,
                     2,
@@ -115,16 +116,16 @@ def test_a_realistic_file_reads_to_exactly_its_cells() -> None:
                     Format(number_format="0.0%", column_width=Default()),
                 ),
                 Cell(
-                    9,
+                    10,
                     "Model",
                     2,
                     3,
                     Formula("=B2*(1+Inputs!B1)"),
                     Format(number_format=money),
                 ),
-                Cell(10, "Model", 3, 1, Text("Positive"), Format(indent=2)),
-                Cell(11, "Model", 3, 2, Logical(True), Format()),
-                Cell(12, "Model", 3, 3, Formula("=NA()"), Format()),
+                Cell(11, "Model", 3, 1, Text("Positive"), Format(indent=2)),
+                Cell(12, "Model", 3, 2, Logical(True), Format()),
+                Cell(13, "Model", 3, 3, Formula("=NA()"), Format()),
             ),
         )
     )
@@ -143,37 +144,57 @@ def test_a_cr_is_refused_once_and_the_rest_is_still_checked() -> None:
     text = yup(line(), line("#x", "", row="2")).replace("\n", "\r\n")
     assert errors(text) == [
         "line 1: a CR, where lines end with LF alone",
-        'line 3: a number is written in JSON\'s grammar, not "x"',
+        'line 4: a number is written in JSON\'s grammar, not "x"',
     ]
 
 
 def test_a_cr_inside_a_line_is_refused_on_that_line() -> None:
     assert errors(yup(line(), line("$a\rb", "", row="2"))) == [
-        "line 3: a CR, where lines end with LF alone",
-        "line 3: a text cannot contain the character U+000D",
+        "line 4: a CR, where lines end with LF alone",
+        "line 4: a text cannot contain the character U+000D",
     ]
 
 
 def test_the_last_line_ends_with_lf() -> None:
-    assert errors(yup(line())[:-1]) == ["line 2: the last line does not end with LF"]
+    assert errors(yup(line())[:-1]) == ["line 3: the last line does not end with LF"]
 
 
 def test_an_empty_file_is_refused() -> None:
     assert errors("") == ["line 1: the file is empty"]
 
 
+def test_the_version_line_is_exact() -> None:
+    assert errors(yup(line()).replace("Format", "format", 1)) == [
+        'line 1: the first line must be "yup 0.0.1 Yupana Straight Line Spreadsheet Format"'
+    ]
+
+
+def test_a_file_of_another_version_is_named_as_such() -> None:
+    assert errors(yup(line()).replace("0.0.1", "0.0.2", 1)) == [
+        'line 1: this reader reads version 0.0.1, not "0.0.2"'
+    ]
+
+
+def test_a_file_without_a_version_line_is_refused() -> None:
+    assert errors(yup(line()).split("\n", 1)[1]) == [
+        'line 1: the first line must be "yup 0.0.1 Yupana Straight Line Spreadsheet Format"',
+        'line 2: the second line must be the header "sheet\\trow\\tcol\\tcell\\tformat"',
+        "line 2: there are no cells",
+    ]
+
+
 def test_the_header_is_exact() -> None:
-    assert errors(yup(line()).replace("format", "Format", 1)) == [
-        'line 1: the first line must be the header "sheet\\trow\\tcol\\tcell\\tformat"'
+    assert errors(yup(line()).replace("\tformat", "\tFormat", 1)) == [
+        'line 2: the second line must be the header "sheet\\trow\\tcol\\tcell\\tformat"'
     ]
 
 
 def test_a_file_needs_a_cell() -> None:
-    assert errors(HEAD) == ["line 1: there are no cells"]
+    assert errors(HEAD) == ["line 2: there are no cells"]
 
 
 def test_an_empty_line_is_refused() -> None:
-    assert errors(yup(line(), "", line(row="2", fmt=""))) == ["line 3: an empty line"]
+    assert errors(yup(line(), "", line(row="2", fmt=""))) == ["line 4: an empty line"]
 
 
 @pytest.mark.parametrize(
@@ -181,7 +202,7 @@ def test_an_empty_line_is_refused() -> None:
 )
 def test_a_line_has_five_fields(text: str) -> None:
     [error] = errors(yup(text))
-    assert error.startswith("line 2: a line has 5 tab-separated fields, not ")
+    assert error.startswith("line 3: a line has 5 tab-separated fields, not ")
 
 
 # Sheet names.
@@ -210,7 +231,7 @@ def test_a_line_has_five_fields(text: str) -> None:
 )
 def test_a_sheet_name_is_refused(sheet: str, message: str) -> None:
     [error] = [e for e in errors(yup(line(sheet=sheet))) if "sheet name" in e]
-    assert error.startswith("line 2: ")
+    assert error.startswith("line 3: ")
     assert message in error
 
 
@@ -241,14 +262,14 @@ def test_a_sheet_name_is_accepted(sheet: str) -> None:
 def test_a_row_is_refused(row: str) -> None:
     [error] = errors(yup(line(row=row)))
     assert error.startswith(
-        "line 2: row must be a whole number from 1 to 1048576, not "
+        "line 3: row must be a whole number from 1 to 1048576, not "
     )
 
 
 @pytest.mark.parametrize("col", ["0", "16385", "A"])
 def test_a_col_is_refused(col: str) -> None:
     [error] = errors(yup(line(col=col)))
-    assert error.startswith("line 2: col must be a whole number from 1 to 16384, not ")
+    assert error.startswith("line 3: col must be a whole number from 1 to 16384, not ")
 
 
 def test_the_largest_row_and_col_are_accepted() -> None:
@@ -295,7 +316,7 @@ def test_the_largest_row_and_col_are_accepted() -> None:
 )
 def test_a_cell_is_refused(cell: str, message: str) -> None:
     [error] = errors(yup(line(cell)))
-    assert error.startswith("line 2: ")
+    assert error.startswith("line 3: ")
     assert message in error
 
 
@@ -357,7 +378,7 @@ def test_a_cell_is_accepted(cell: str, content: object) -> None:
 )
 def test_a_format_is_refused(fmt: str, message: str) -> None:
     [error] = errors(yup(line(fmt=fmt)))
-    assert error.startswith("line 2: ")
+    assert error.startswith("line 3: ")
     assert message in error
 
 
@@ -390,27 +411,27 @@ def test_a_format_is_accepted(fmt: str, expected: Format) -> None:
 
 def test_no_two_lines_name_the_same_cell() -> None:
     assert errors(yup(line(), line("#2", ""))) == [
-        'line 3: sheet "Model", row 1, col 1 is already on line 2'
+        'line 4: sheet "Model", row 1, col 1 is already on line 3'
     ]
 
 
 def test_a_cell_is_the_same_whatever_the_spelling_of_its_sheet() -> None:
     assert errors(yup(line(), line("#2", "", sheet="MODEL"))) == [
-        'line 3: sheet "MODEL" is spelled "Model" earlier',
-        'line 3: sheet "Model", row 1, col 1 is already on line 2',
+        'line 4: sheet "MODEL" is spelled "Model" earlier',
+        'line 4: sheet "Model", row 1, col 1 is already on line 3',
     ]
 
 
 def test_the_first_line_for_a_column_carries_its_width() -> None:
     assert errors(yup(line(fmt=""))) == [
-        'line 2: the first line for sheet "Model", col 1, must carry columnwidth'
+        'line 3: the first line for sheet "Model", col 1, must carry columnwidth'
     ]
 
 
 def test_no_later_line_for_a_column_carries_a_width() -> None:
     text = yup(line(), line(row="2", fmt="columnwidth=default"))
     assert errors(text) == [
-        'line 3: only the first line for sheet "Model", col 1, may carry columnwidth'
+        'line 4: only the first line for sheet "Model", col 1, may carry columnwidth'
     ]
 
 
@@ -426,9 +447,9 @@ def test_widths_belong_to_each_sheet_and_column() -> None:
 
 def test_a_line_with_a_bad_cell_still_counts_for_the_rules_across_lines() -> None:
     assert errors(yup(line("#x"), line(fmt="columnwidth=3"))) == [
-        'line 2: a number is written in JSON\'s grammar, not "x"',
-        'line 3: sheet "Model", row 1, col 1 is already on line 2',
-        'line 3: only the first line for sheet "Model", col 1, may carry columnwidth',
+        'line 3: a number is written in JSON\'s grammar, not "x"',
+        'line 4: sheet "Model", row 1, col 1 is already on line 3',
+        'line 4: only the first line for sheet "Model", col 1, may carry columnwidth',
     ]
 
 

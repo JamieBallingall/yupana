@@ -1,3 +1,4 @@
+yup 0.0.1 Yupana Straight Line Spreadsheet Format
 sheet	row	col	cell	format
 Errors	1	1	=SUM(C1:C2 D1:D2)	columnwidth=default
 Errors	2	1	=1/0	

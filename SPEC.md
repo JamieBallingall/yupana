@@ -17,13 +17,17 @@ In the examples below, `→` stands for a tab. Real tabs do not survive copying 
   lines.
 - Fields are separated by a tab. No field can contain a tab, a CR or an LF, and there is no quoting
   (the IANA `text/tab-separated-values` rule).
-- The first line is exactly the header `sheet→row→col→cell→format`.
-- Every other line has exactly five fields, in that order, and there is at least one such line.
+- The first line is exactly `yup 0.0.1 Yupana Straight Line Spreadsheet Format`: the **version
+  line**. It says what the file is, and which version of this specification it follows. A reader
+  refuses a version it does not know.
+- The second line is exactly the header `sheet→row→col→cell→format`.
+- Every later line has exactly five fields, in that order, and there is at least one such line.
 - A line whose format is empty still has five fields, so it ends with a tab.
 - **Lengths are counted in UTF-16 code units**: a character outside the Basic Multilingual Plane
   counts as two.
 
 ```text
+yup 0.0.1 Yupana Straight Line Spreadsheet Format
 sheet→row→col→cell→format
 Model→1→1→$Year→columnwidth=34
 Model→1→2→#2026→columnwidth=10|numberformat=0

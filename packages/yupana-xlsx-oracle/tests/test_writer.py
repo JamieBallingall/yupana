@@ -10,7 +10,7 @@ import pytest
 from yupana.result import Err
 from yupana.values import read_values
 from yupana.xlsx import write_xlsx, write_xlsx_file
-from yupana.yup import read_yup
+from yupana.yup import PREAMBLE, read_yup
 from yupana_xlsx_oracle.compare import compare
 from yupana_xlsx_oracle.errors import Refused
 from yupana_xlsx_oracle.session import Session
@@ -84,8 +84,7 @@ def test_an_accounting_format_shows_as_the_app_shows_it(
     session: Session, code: str, shown: list[str]
 ) -> None:
     text = (
-        "sheet\trow\tcol\tcell\tformat\n"
-        f"S\t1\t1\t#1234.5\tcolumnwidth=14|numberformat={code}\n"
+        PREAMBLE + f"S\t1\t1\t#1234.5\tcolumnwidth=14|numberformat={code}\n"
         f"S\t2\t1\t#-1234.5\tnumberformat={code}\n"
         f"S\t3\t1\t#0\tnumberformat={code}\n"
     )

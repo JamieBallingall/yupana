@@ -1,8 +1,8 @@
 """The ``.yup`` format: its types, and a reader that checks a file against ``SPEC.md``.
 
 >>> text = (
-...     "sheet\\trow\\tcol\\tcell\\tformat\\n"
-...     "Model\\t1\\t1\\t$Revenue\\tcolumnwidth=20\\n"
+...     PREAMBLE
+...     + "Model\\t1\\t1\\t$Revenue\\tcolumnwidth=20\\n"
 ...     "Model\\t1\\t2\\t#1000\\tcolumnwidth=default|numberformat=#,##0\\n"
 ...     "Model\\t2\\t2\\t=B1*2\\t\\n"
 ... )
@@ -19,8 +19,8 @@ A file with problems is refused with every one of them, each with its line:
 >>> broken = text.replace("#1000", "#01").replace("\\t2\\t2\\t", "\\t0\\t2\\t")
 >>> for error in read_yup(broken).unwrap_err():
 ...     print(error)
-line 3: a number is written in JSON's grammar, not "01"
-line 4: row must be a whole number from 1 to 1048576, not "0"
+line 4: a number is written in JSON's grammar, not "01"
+line 5: row must be a whole number from 1 to 1048576, not "0"
 """
 
 import json
@@ -31,7 +31,13 @@ from dataclasses import dataclass
 
 from yupana.result import Err, Ok, Result
 
+VERSION = "0.0.1"
+# The first line names the format and its version, so that a file says what it is, and a
+# reader of a later version can tell which rules a file was written to.
+VERSION_LINE = f"yup {VERSION} Yupana Straight Line Spreadsheet Format"
 HEADER = "sheet\trow\tcol\tcell\tformat"
+PREAMBLE = f"{VERSION_LINE}\n{HEADER}\n"
+"""The two lines every ``.yup`` file starts with, for a writer to begin with."""
 MAX_ROW = 1_048_576
 MAX_COL = 16_384
 MAX_SHEET_NAME = 31
@@ -365,6 +371,15 @@ def _across_lines(placed: Iterable[_Placed]) -> list[YupError]:
     return errors
 
 
+def _not_the_version_line(line: str) -> str:
+    """Why a first line is not this version's, naming the version it claims, if any."""
+    match line.split(" ", 2):
+        case ["yup", version, *_] if version != VERSION:
+            return f"this reader reads version {VERSION}, not {quoted(version)}"
+        case _:
+            return f"the first line must be {quoted(VERSION_LINE)}"
+
+
 def read_yup(text: str) -> Result[Yup, tuple[YupError, ...]]:
     """A ``.yup`` file's cells, checked, or every problem with it, each with its line.
 
@@ -387,16 +402,18 @@ def read_yup(text: str) -> Result[Yup, tuple[YupError, ...]]:
         )
         text += "\n"
     lines = text.split("\n")[:-1]
-    if lines[0] != HEADER:
+    if lines[0] != VERSION_LINE:
+        errors.append(YupError(1, _not_the_version_line(lines[0])))
+    if len(lines) > 1 and lines[1] != HEADER:
         errors.append(
-            YupError(1, f"the first line must be the header {quoted(HEADER)}")
+            YupError(2, f"the second line must be the header {quoted(HEADER)}")
         )
-    if len(lines) < 2:
-        errors.append(YupError(1, "there are no cells"))
+    if len(lines) < 3:
+        errors.append(YupError(len(lines), "there are no cells"))
 
     cells: list[Cell] = []
     placed: list[_Placed] = []
-    for number, line in enumerate(lines[1:], start=2):
+    for number, line in enumerate(lines[2:], start=3):
         if not line:
             errors.append(YupError(number, "an empty line"))
             continue

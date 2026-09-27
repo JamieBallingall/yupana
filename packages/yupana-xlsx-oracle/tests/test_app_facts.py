@@ -13,11 +13,11 @@ from typing import Any
 
 import pytest
 from yupana.xlsx import write_xlsx
-from yupana.yup import read_yup
+from yupana.yup import PREAMBLE, read_yup
 from yupana_xlsx_oracle.session import Session, com_error
 
 TARGET = Path(__file__).resolve().parents[3] / "target" / "oracle-tests" / "facts"
-HEAD = "sheet\trow\tcol\tcell\tformat\n"
+HEAD = PREAMBLE
 
 
 @pytest.fixture(scope="module")
