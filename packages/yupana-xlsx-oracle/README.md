@@ -1,7 +1,33 @@
 # yupana-xlsx-oracle
 
 Has the real spreadsheet app compute a `.yup` or xlsx file, and compares what it computed with a
-values CSV. A tool for checking; nothing depends on it at run time.
+values CSV. A tool for checking: nothing depends on it at run time.
+
+Requires Windows and Microsoft Excel. Excel is a trademark of Microsoft Corporation; this project
+is not affiliated with or endorsed by Microsoft.
+
+## Commands
+
+```bash
+yupana-xlsx-oracle build   model.yup  [--values model.csv] [--xlsx model.xlsx]
+yupana-xlsx-oracle read    model.xlsx model.yup [--values model.csv]
+yupana-xlsx-oracle compare model.yup  expected.csv [--xlsx model.xlsx] [--tolerance 1e-9]
+```
+
+- **`build`**: write every cell of the `.yup` file into a fresh workbook in the app, recalculate
+  in full, and write the values CSV. With `--xlsx`, also save the app's own workbook.
+- **`read`**: open an xlsx file in the app, recalculate in full, and write the values of the
+  cells the `.yup` file lists. A file the app will not open is reported as refused.
+- **`compare`**: compute as `build` does (or as `read` does, given `--xlsx`), and compare with a
+  values CSV, cell by cell, reporting every disagreement. Exact by default: type and value must
+  be identical. With `--tolerance t`, numbers agree within `t`, and any error agrees with any
+  error.
+
+Values go to `--values` or to standard output; problems go to standard error. The exit status is
+0 when all is well and 1 otherwise.
+
+The app runs as a private, hidden instance, never the one you have open, and a dialog can never
+hang a command: a call that does not return in time is reported as stalled.
 
 ## The machine
 
