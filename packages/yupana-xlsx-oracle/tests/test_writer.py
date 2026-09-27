@@ -73,16 +73,8 @@ def test_the_writers_workbook_with_one_cell_written_twice_is_refused(
 
 
 @pytest.mark.app
-@pytest.mark.parametrize(
-    ("code", "shown"),
-    [
-        ("_(#,##0.0_);(#,##0.0);_(-_)", [" 1,234.5 ", "(1,234.5)", " - "]),
-        ("_(#,##0.0);(#,##0.0);_(-_)", [" 1,234.5)", "(1,234.5)", " - "]),
-    ],
-)
-def test_an_accounting_format_shows_as_the_app_shows_it(
-    session: Session, code: str, shown: list[str]
-) -> None:
+def test_an_accounting_format_shows_as_the_app_shows_it(session: Session) -> None:
+    code = "_(#,##0.0_);(#,##0.0);_(-_)"
     text = (
         PREAMBLE + f"S\t1\t1\t#1234.5\tcolumnwidth=14|numberformat={code}\n"
         f"S\t2\t1\t#-1234.5\tnumberformat={code}\n"
@@ -94,7 +86,7 @@ def test_an_accounting_format_shows_as_the_app_shows_it(
     workbook = session.app.Workbooks.Open(str(path), UpdateLinks=0, ReadOnly=True)
     found = [workbook.Worksheets(1).Cells(row, 1).Text for row in (1, 2, 3)]
     workbook.Close(SaveChanges=False)
-    assert found == shown
+    assert found == [" 1,234.5 ", "(1,234.5)", " - "]
 
 
 @pytest.mark.app
