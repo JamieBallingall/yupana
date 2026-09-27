@@ -1,0 +1,15 @@
+[project]
+name = "yupana"
+version = "0.1.0"
+description = "The .yup format: a spreadsheet as text, read, checked and written as xlsx."
+requires-python = ">=3.14"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = []
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/yupana"]

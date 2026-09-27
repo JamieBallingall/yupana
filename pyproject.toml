@@ -1,0 +1,19 @@
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.pytest.ini_options]
+addopts = "--doctest-modules --import-mode=importlib"
+doctest_optionflags = "ELLIPSIS"
+testpaths = [
+    "packages/yupana/src/yupana",
+    "packages/yupana/tests",
+    "packages/yupana-xlsx-oracle/src/yupana_xlsx_oracle",
+    "packages/yupana-xlsx-oracle/tests",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.9",
+    "ty==0.0.84",
+]
