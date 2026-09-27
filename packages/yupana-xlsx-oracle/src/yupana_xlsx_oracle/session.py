@@ -48,6 +48,13 @@ class Stalled:
         return f"the spreadsheet app stalled while {self.what}"
 
 
+def com_error() -> type[Exception]:
+    """The exception the app raises through COM, for a narrow ``except`` clause."""
+    import pywintypes
+
+    return pywintypes.com_error
+
+
 def app_installed() -> bool:
     """Whether the spreadsheet app is registered for COM on this machine."""
     try:
