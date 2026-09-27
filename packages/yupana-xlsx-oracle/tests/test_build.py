@@ -120,6 +120,7 @@ def test_sheets_are_named_and_ordered_and_refer_to_each_other(session: Session) 
         "My Model",
         "It's",
     ]
+    assert "activeTab=" not in listed, "the workbook opens on a later sheet"
 
 
 @pytest.mark.app

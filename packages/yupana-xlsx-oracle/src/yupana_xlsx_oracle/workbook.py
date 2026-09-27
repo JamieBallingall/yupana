@@ -226,6 +226,8 @@ def build(
             problem = _attempt(session, first_line[name], "the sheet name", rename)
             rejected.extend([] if problem is None else [problem])
             made[name] = previous = sheet
+        # Adding a sheet activates it; the writer's workbooks open on the first.
+        workbook.Worksheets(1).Activate()
         return workbook, made, rejected
 
     match session.guarded("creating a workbook", session.timeouts.open, create):
