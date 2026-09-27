@@ -43,7 +43,7 @@ SMALLEST_NORMAL = 2.2250738585072014e-308
 LARGEST = 9.99999999999999e307
 
 _INTEGER = re.compile(r"[1-9][0-9]*")
-_NUMBER = re.compile(r"-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?")
+JSON_NUMBER = re.compile(r"-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?")
 ESCAPE_SHAPE = re.compile(r"_x[0-9A-Fa-f]{4}_")
 _NOT_IN_SHEET_NAME = ":\\/?*[]"
 _KEYS = ("numberformat", "indent", "columnwidth")
@@ -149,40 +149,43 @@ def bad_character(text: str) -> str | None:
     return None
 
 
-def _quoted(text: str) -> str:
+def quoted(text: str) -> str:
     return json.dumps(text, ensure_ascii=False)
 
 
-def _sheet_name(name: str) -> tuple[str, ...]:
+def sheet_name_problems(name: str) -> tuple[str, ...]:
     """Every rule a sheet name breaks."""
     problems: list[str] = []
     length = utf16_length(name)
     if not 1 <= length <= MAX_SHEET_NAME:
         problems.append(
             f"a sheet name is 1 to {MAX_SHEET_NAME} characters long, "
-            f"and {_quoted(name)} is {length}"
+            f"and {quoted(name)} is {length}"
         )
     forbidden = [c for c in _NOT_IN_SHEET_NAME if c in name]
     if forbidden:
-        listed = " ".join(_quoted(c) for c in forbidden)
-        problems.append(f"sheet name {_quoted(name)} contains {listed}")
+        listed = " ".join(quoted(c) for c in forbidden)
+        problems.append(f"sheet name {quoted(name)} contains {listed}")
     if name.startswith("'") or name.endswith("'"):
-        problems.append(f"sheet name {_quoted(name)} starts or ends with an apostrophe")
+        problems.append(f"sheet name {quoted(name)} starts or ends with an apostrophe")
     if name.casefold() == "history":
-        problems.append(
-            f"sheet name {_quoted(name)} is reserved by the spreadsheet app"
-        )
+        problems.append(f"sheet name {quoted(name)} is reserved by the spreadsheet app")
     if shape := ESCAPE_SHAPE.search(name):
         problems.append(
-            f"sheet name {_quoted(name)} contains {_quoted(shape.group())}, "
+            f"sheet name {quoted(name)} contains {quoted(shape.group())}, "
             "which xlsx would decode as a character"
         )
     if bad := bad_character(name):
-        problems.append(f"sheet name {_quoted(name)} contains the character {bad}")
+        problems.append(f"sheet name {quoted(name)} contains the character {bad}")
     return tuple(problems)
 
 
-def _position(field: str, text: str, largest: int) -> Result[int, str]:
+def position(field: str, text: str, largest: int) -> Result[int, str]:
+    """A row or col: a whole number from 1 to ``largest``, with no sign or leading zero.
+
+    >>> position("row", "12", 100), position("row", "012", 100)
+    (Ok(value=12), Err(error='row must be a whole number from 1 to 100, not "012"'))
+    """
     if (
         _INTEGER.fullmatch(text)
         and len(text) <= len(str(largest))
@@ -190,13 +193,13 @@ def _position(field: str, text: str, largest: int) -> Result[int, str]:
     ):
         return Ok(int(text))
     return Err(
-        f"{field} must be a whole number from 1 to {largest}, not {_quoted(text)}"
+        f"{field} must be a whole number from 1 to {largest}, not {quoted(text)}"
     )
 
 
 def _number(text: str) -> Result[float, str]:
-    if not _NUMBER.fullmatch(text):
-        return Err(f"a number is written in JSON's grammar, not {_quoted(text)}")
+    if not JSON_NUMBER.fullmatch(text):
+        return Err(f"a number is written in JSON's grammar, not {quoted(text)}")
     value = float(text)
     mantissa = re.split("[eE]", text)[0]
     if not math.isfinite(value) or abs(value) > LARGEST:
@@ -240,11 +243,11 @@ def _content(cell: str) -> Result[Content, str]:
         case "?":
             if rest in ("TRUE", "FALSE"):
                 return Ok(Logical(rest == "TRUE"))
-            return Err(f"a logical is TRUE or FALSE, not {_quoted(rest)}")
+            return Err(f"a logical is TRUE or FALSE, not {quoted(rest)}")
         case "":
             return Err("the cell is empty: a blank cell is not listed")
         case _:
-            return Err(f"a cell starts with =, #, $ or ?, not {_quoted(kind)}")
+            return Err(f"a cell starts with =, #, $ or ?, not {quoted(kind)}")
 
 
 def _indent(text: str) -> Result[int, str]:
@@ -253,17 +256,17 @@ def _indent(text: str) -> Result[int, str]:
     ) <= MAX_INDENT:
         return Ok(int(text))
     return Err(
-        f"indent must be a whole number from 0 to {MAX_INDENT}, not {_quoted(text)}"
+        f"indent must be a whole number from 0 to {MAX_INDENT}, not {quoted(text)}"
     )
 
 
 def _column_width(text: str) -> Result[float | Default, str]:
     if text == "default":
         return Ok(Default())
-    if _NUMBER.fullmatch(text) and 0 <= (width := float(text)) <= MAX_COLUMN_WIDTH:
+    if JSON_NUMBER.fullmatch(text) and 0 <= (width := float(text)) <= MAX_COLUMN_WIDTH:
         return Ok(width + 0.0)
     return Err(
-        f"columnwidth must be default or a number from 0 to 255, not {_quoted(text)}"
+        f"columnwidth must be default or a number from 0 to 255, not {quoted(text)}"
     )
 
 
@@ -275,9 +278,9 @@ def _format(text: str) -> Result[Format, tuple[str, ...]]:
     for pair in text.split("|"):
         key, equals, value = pair.partition("=")
         if not equals or not value:
-            problems.append(f"a format pair is key=value, not {_quoted(pair)}")
+            problems.append(f"a format pair is key=value, not {quoted(pair)}")
         elif key not in _KEYS:
-            problems.append(f"unknown format key {_quoted(key)}")
+            problems.append(f"unknown format key {quoted(key)}")
         elif key in pairs:
             problems.append(f"the format key {key} appears twice")
         else:
@@ -333,12 +336,12 @@ def _across_lines(placed: Iterable[_Placed]) -> list[YupError]:
             errors.append(
                 YupError(
                     p.line,
-                    f"sheet {_quoted(p.sheet)} is spelled {_quoted(first)} earlier",
+                    f"sheet {quoted(p.sheet)} is spelled {quoted(first)} earlier",
                 )
             )
         if p.row is None or p.col is None:
             continue
-        where = f"sheet {_quoted(first)}, row {p.row}, col {p.col}"
+        where = f"sheet {quoted(first)}, row {p.row}, col {p.col}"
         cell = (key, p.row, p.col)
         if cell in first_line:
             errors.append(
@@ -353,7 +356,7 @@ def _across_lines(placed: Iterable[_Placed]) -> list[YupError]:
                 errors.append(
                     YupError(
                         p.line,
-                        f"the first line for sheet {_quoted(first)}, col {p.col}, "
+                        f"the first line for sheet {quoted(first)}, col {p.col}, "
                         "must carry columnwidth",
                     )
                 )
@@ -361,7 +364,7 @@ def _across_lines(placed: Iterable[_Placed]) -> list[YupError]:
             errors.append(
                 YupError(
                     p.line,
-                    f"only the first line for sheet {_quoted(first)}, col {p.col}, "
+                    f"only the first line for sheet {quoted(first)}, col {p.col}, "
                     "may carry columnwidth",
                 )
             )
@@ -392,7 +395,7 @@ def read_yup(text: str) -> Result[Yup, tuple[YupError, ...]]:
     lines = text.split("\n")[:-1]
     if lines[0] != HEADER:
         errors.append(
-            YupError(1, f"the first line must be the header {_quoted(HEADER)}")
+            YupError(1, f"the first line must be the header {quoted(HEADER)}")
         )
     if len(lines) < 2:
         errors.append(YupError(1, "there are no cells"))
@@ -412,9 +415,9 @@ def read_yup(text: str) -> Result[Yup, tuple[YupError, ...]]:
             )
             continue
         sheet, row_text, col_text, cell_text, format_text = fields
-        sheet_problems = _sheet_name(sheet)
-        row = _position("row", row_text, MAX_ROW)
-        col = _position("col", col_text, MAX_COL)
+        sheet_problems = sheet_name_problems(sheet)
+        row = position("row", row_text, MAX_ROW)
+        col = position("col", col_text, MAX_COL)
         content = _content(cell_text)
         cell_format = _format(format_text)
         problems = [*sheet_problems]
