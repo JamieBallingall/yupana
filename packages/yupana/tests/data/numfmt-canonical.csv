@@ -1,0 +1,217 @@
+group,sent,stored,numFmtId,outcome
+builtin,General,,0,builtin
+builtin,0,,1,builtin
+builtin,0.00,,2,builtin
+builtin,"#,##0",,3,builtin
+builtin,"#,##0.00",,4,builtin
+builtin,"$#,##0_);($#,##0)","""$""#,##0_);\(""$""#,##0\)",5,builtin
+builtin,"$#,##0_);[Red]($#,##0)","""$""#,##0_);[Red]\(""$""#,##0\)",6,builtin
+builtin,"$#,##0.00_);($#,##0.00)","""$""#,##0.00_);\(""$""#,##0.00\)",7,builtin
+builtin,"$#,##0.00_);[Red]($#,##0.00)","""$""#,##0.00_);[Red]\(""$""#,##0.00\)",8,builtin
+builtin,0%,,9,builtin
+builtin,0.00%,,10,builtin
+builtin,0.00E+00,,11,builtin
+builtin,# ?/?,,12,builtin
+builtin,# ??/??,,13,builtin
+builtin,m/d/yyyy,,14,builtin
+builtin,d-mmm-yy,,15,builtin
+builtin,d-mmm,,16,builtin
+builtin,mmm-yy,,17,builtin
+builtin,h:mm AM/PM,,18,builtin
+builtin,h:mm:ss AM/PM,,19,builtin
+builtin,h:mm,,20,builtin
+builtin,h:mm:ss,,21,builtin
+builtin,m/d/yyyy h:mm,,22,builtin
+builtin,"#,##0_);(#,##0)",,37,builtin
+builtin,"#,##0_);[Red](#,##0)",,38,builtin
+builtin,"#,##0.00_);(#,##0.00)",,39,builtin
+builtin,"#,##0.00_);[Red](#,##0.00)",,40,builtin
+builtin,"_(* #,##0_);_(* (#,##0);_(* ""-""_);_(@_)","_(* #,##0_);_(* \(#,##0\);_(* ""-""_);_(@_)",41,builtin
+builtin,"_($* #,##0_);_($* (#,##0);_($* ""-""_);_(@_)","_(""$""* #,##0_);_(""$""* \(#,##0\);_(""$""* ""-""_);_(@_)",42,builtin
+builtin,"_(* #,##0.00_);_(* (#,##0.00);_(* ""-""??_);_(@_)","_(* #,##0.00_);_(* \(#,##0.00\);_(* ""-""??_);_(@_)",43,builtin
+builtin,"_($* #,##0.00_);_($* (#,##0.00);_($* ""-""??_);_(@_)","_(""$""* #,##0.00_);_(""$""* \(#,##0.00\);_(""$""* ""-""??_);_(@_)",44,builtin
+builtin,mm:ss,,45,builtin
+builtin,[h]:mm:ss,,46,builtin
+builtin,mm:ss.0,,47,builtin
+builtin,##0.0E+0,,48,builtin
+builtin,@,,49,builtin
+builtin case,GENERAL,,0,builtin
+builtin case,general,,0,builtin
+builtin case,0.00e+00,,,rejected
+builtin case,MM:SS,,45,builtin
+builtin case,M/D/YYYY,,14,builtin
+builtin case,H:MM,,20,builtin
+builtin case,[H]:MM:SS,,46,builtin
+builtin case,"#,##0_);[RED](#,##0)",,38,builtin
+builtin case,##0.0e+0,,,rejected
+escaping,0-0,0\-0,164,custom
+escaping,(0),\(0\),165,custom
+escaping,0 0,0\ 0,166,custom
+escaping,0.0 ;(0.0),0.0\ ;\(0.0\),167,custom
+escaping,"#,##0,","#,##0,",168,custom
+escaping,"0.0,,","0.0,,",169,custom
+escaping,"#,##0.0,""K""","#,##0.0,""K""",170,custom
+escaping,"mmm d, yyyy","mmm\ d\,\ yyyy",171,custom
+escaping,"0,0","#,#00",172,custom
+escaping,"#,#","#,###",173,custom
+escaping,"0,,0","#,#00",172,custom
+escaping,",0","\,0",174,custom
+escaping,0.0_);(0.0),0.0_);\(0.0\),175,custom
+escaping,-0,\-0,176,custom
+escaping,0-,0\-,177,custom
+escaping,- 0 -,\-\ 0\ \-,178,custom
+currency,$0.00,"""$""0.00",179,custom
+currency,"""$""0.00","""$""0.00",179,custom
+currency,\$0.00,\$0.00,180,custom
+currency,"£#,##0.00","\£#,##0.00",181,custom
+currency,"€#,##0.00","\€#,##0.00",182,custom
+currency,¥0,\¥0,183,custom
+currency,"[$€-2]#,##0","[$€-2]#,##0",184,custom
+currency,"[$£-809]#,##0.00","[$£-809]#,##0.00",185,custom
+currency,[$USD] 0,[$USD]\ 0,186,custom
+currency,[$-409]0.00,[$-409]0.00,187,custom
+currency,[$-en-US]0.00,[$-409]0.00,187,custom
+currency,[$-F800]dddd,[$-F800]dddd,188,custom
+currency,"$ #,##0","""$""\ #,##0",189,custom
+currency,0.00 $,"0.00\ ""$""",190,custom
+quoting,"0.0"" kg""","0.0"" kg""",191,custom
+quoting,"0.0"" KG""","0.0"" KG""",192,custom
+quoting,"""x""0","""x""0",193,custom
+quoting,0.0\x,0.0\x,194,custom
+quoting,0.0x,0.0\x,194,custom
+quoting,"0.0""""","0.0""""",195,custom
+quoting,"""a""""b""0","""a""""b""0",196,custom
+quoting,"0.0"" kg""_)","0.0"" kg""_)",197,custom
+quoting,\a\b0,\a\b0,198,custom
+dates,yyyy-mm-dd,yyyy\-mm\-dd,199,custom
+dates,YYYY-MM-DD,yyyy\-mm\-dd,199,custom
+dates,dd/mm/yyyy,dd/mm/yyyy,200,custom
+dates,d mmm yyyy,d\ mmm\ yyyy,201,custom
+dates,hh:mm:ss,hh:mm:ss,202,custom
+dates,[h]:mm:ss,,46,builtin
+dates,[H]:MM:SS,,46,builtin
+dates,mm:ss.0,,47,builtin
+dates,[h]:mm:ss.00,[h]:mm:ss.00,203,custom
+dates,ss.000,ss.000,204,custom
+dates,yyyy0,,,rejected
+dates,0 yyyy,,,rejected
+dates,dd0,,,rejected
+dates,yyyy;0,yyyy;0,205,custom
+dates,"0.0"" yyyy""","0.0"" yyyy""",206,custom
+dates,hh:mm AM/PM,hh:mm\ AM/PM,207,custom
+dates,h:mm a/p,h:mm\ a/p,208,custom
+dates,ddd,ddd,209,custom
+dates,dddd,dddd,210,custom
+dates,mmmm,mmmm,211,custom
+dates,mmmmm,mmmmm,212,custom
+dates,yy,yy,213,custom
+dates,[mm]:ss,[mm]:ss,214,custom
+dates,[ss],[ss],215,custom
+dates,d-mmm-yyyy,d\-mmm\-yyyy,216,custom
+dates,yyyy-mm-dd hh:mm,yyyy\-mm\-dd\ hh:mm,217,custom
+dates,d/m/yy,d/m/yy,218,custom
+dates,yyyy\-mm,yyyy\-mm,219,custom
+dates,e,e,220,custom
+dates,B1yyyy,B1yyyy,221,custom
+colours,[RED]0.0,[Red]0.0,222,custom
+colours,[red]0.0,[Red]0.0,222,custom
+colours,[Red]0.0;[Blue]-0.0,[Red]0.0;[Blue]\-0.0,223,custom
+colours,[Color10]0,[Color10]0,224,custom
+colours,[COLOR10]0,[Color10]0,224,custom
+colours,[color 10]0,[Color10]0,224,custom
+colours,[>=100]0;0.00,[>=100]0;0.00,225,custom
+colours,"[<0]""neg"";0","[<0]""neg"";0",226,custom
+colours,[>100][Red]0;0,[Red][>100]0;0,227,custom
+colours,[=1]0;0.0,[=1]0;0.0,228,custom
+punctuation,+0,\+0,229,custom
+punctuation,0:0,,,rejected
+punctuation,0^0,0\^0,230,custom
+punctuation,0'0,0\'0,231,custom
+punctuation,0{0},0\{0\},232,custom
+punctuation,0<0,0\<0,233,custom
+punctuation,0=0,0\=0,234,custom
+punctuation,0~0,0\~0,235,custom
+punctuation,0&0,0\&0,236,custom
+punctuation,0!0,0\!0,237,custom
+punctuation,0%%,0%%,238,custom
+punctuation,0.00_),0.00_),239,custom
+punctuation,* 0,* 0,240,custom
+punctuation,0.0;-0.0;0.0;@,0.0;\-0.0;0.0;@,241,custom
+punctuation,General;General,General;General,242,custom
+punctuation,"""x""General","""x""General",243,custom
+punctuation,0;;,0;;,244,custom
+punctuation,;;;,;;;,245,custom
+punctuation,"@"" units""","@"" units""",246,custom
+punctuation,0.0E-0,0.0E-0,247,custom
+punctuation,0E+0,0E+0,248,custom
+punctuation,0.0e+0,,,rejected
+punctuation,# ??/16,#\ ??/16,249,custom
+punctuation,0 ?/?,0\ ?/?,250,custom
+punctuation,#.##,#.##,251,custom
+punctuation,0.##,0.##,252,custom
+punctuation,#,#,253,custom
+punctuation,?.??,?.??,254,custom
+punctuation,0|0,0\|0,255,custom
+thousands,"0,000","0,000",164,custom
+thousands,"00,0","#,000",165,custom
+thousands,"#,0",,3,builtin
+thousands,"##,#0",,3,builtin
+thousands,"0,00","#,000",165,custom
+thousands,"#,##0,000","#,##0,000",166,custom
+thousands,"#,###,##0","#,###,##0",167,custom
+thousands,"?,??0","?,??0",168,custom
+thousands,"0,0.00","#,#00.00",169,custom
+thousands,"#,##0.00,","#,##0.00,",170,custom
+thousands,"0,0,0","#,000",165,custom
+thousands,"#,##","#,###",171,custom
+thousands,"#,","#,",172,custom
+thousands,"0,","0,",173,custom
+thousands,"#,##0 ,","#,##0\ \,",174,custom
+thousands,"0.0,0",,2,builtin
+thousands,"#,##0;(#,##0)","#,##0;\(#,##0\)",175,custom
+thousands,"#,#0.0","#,##0.0",176,custom
+thousands,"0,000.0","0,000.0",177,custom
+thousands,"##,##0","##,##0",178,custom
+thousands,"#,###0","##,##0",178,custom
+ampm,h:mm am/pm,,18,builtin
+ampm,h:mm A/P,h:mm\ A/P,179,custom
+ampm,h:mm Am/Pm,,18,builtin
+ampm,h AM/PM,h\ AM/PM,180,custom
+ampm,hh:mm:ss AM/PM,hh:mm:ss\ AM/PM,181,custom
+misc,0>0,0\>0,182,custom
+misc,0`0,0\`0,183,custom
+misc,0 1,0\ \1,184,custom
+misc,10,\10,185,custom
+misc,0.01,0.0\1,186,custom
+misc,# ?/10,#\ ?/10,187,custom
+misc,0\-0,0\-0,188,custom
+misc,0\ 0,0\ 0,189,custom
+misc,0.0 ,0.0\ ,190,custom
+misc,0.0_ ,0.0_ ,191,custom
+misc,0*-,0*-,192,custom
+misc,0°,0\°,193,custom
+misc,0é,,,rejected
+misc,0½,0\½,194,custom
+misc,0§,0\§,195,custom
+misc,[Color 56]0,[Color56]0,196,custom
+misc,[COLOR57]0,,,rejected
+misc,[Colour10]0,,,rejected
+misc,[$USD-409] 0,[$USD-409]\ 0,197,custom
+misc,"[$$-409]#,##0.00","[$$-409]#,##0.00",198,custom
+misc,[$€]0,[$€]0,199,custom
+misc,[>100][Red]0;[Blue]0,[Red][>100]0;[Blue]0,200,custom
+misc,[Red][>100]0,[Red][>100]0;General,201,custom
+misc,0.0%;(0.0%),0.0%;\(0.0%\),202,custom
+misc,"""$""#,##0;(""$""#,##0)","""$""#,##0;\(""$""#,##0\)",203,custom
+misc,[hh]:mm,[hh]:mm,204,custom
+misc,[H],[h],205,custom
+misc,[m],[m],206,custom
+misc,"General ""x""","General\ ""x""",207,custom
+misc,"0""",,,rejected
+misc,0.0;;;,0.0;;;,208,custom
+misc,0;0;0;0;0,,,rejected
+misc,\,,,rejected
+misc,_,,,rejected
+misc,*,,,rejected
+misc,0\,,,rejected
+misc,#0#,#0#,209,custom
