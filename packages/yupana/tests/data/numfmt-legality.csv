@@ -1,0 +1,174 @@
+sent,writer,file_code,opens
+"$#,##0_);($#,##0)",writes,"""$""#,##0_);\(""$""#,##0\)",yes
+"$#,##0_);[Red]($#,##0)",writes,"""$""#,##0_);[Red]\(""$""#,##0\)",yes
+"$#,##0.00_);($#,##0.00)",writes,"""$""#,##0.00_);\(""$""#,##0.00\)",yes
+"$#,##0.00_);[Red]($#,##0.00)",writes,"""$""#,##0.00_);[Red]\(""$""#,##0.00\)",yes
+"_(* #,##0_);_(* (#,##0);_(* ""-""_);_(@_)",writes,"_(* #,##0_);_(* \(#,##0\);_(* ""-""_);_(@_)",yes
+"_($* #,##0_);_($* (#,##0);_($* ""-""_);_(@_)",writes,"_(""$""* #,##0_);_(""$""* \(#,##0\);_(""$""* ""-""_);_(@_)",yes
+"_(* #,##0.00_);_(* (#,##0.00);_(* ""-""??_);_(@_)",writes,"_(* #,##0.00_);_(* \(#,##0.00\);_(* ""-""??_);_(@_)",yes
+"_($* #,##0.00_);_($* (#,##0.00);_($* ""-""??_);_(@_)",writes,"_(""$""* #,##0.00_);_(""$""* \(#,##0.00\);_(""$""* ""-""??_);_(@_)",yes
+0.00e+00,refuses,0.00e+00,no
+##0.0e+0,refuses,##0.0e+0,no
+0-0,writes,0\-0,yes
+(0),writes,\(0\),yes
+0 0,writes,0\ 0,yes
+0.0 ;(0.0),writes,0.0\ ;\(0.0\),yes
+"#,##0,",writes,"#,##0,",yes
+"0.0,,",writes,"0.0,,",yes
+"#,##0.0,""K""",writes,"#,##0.0,""K""",yes
+"mmm d, yyyy",writes,"mmm\ d\,\ yyyy",yes
+"0,0",writes,"#,#00",yes
+"#,#",writes,"#,###",yes
+"0,,0",writes,"#,#00",yes
+",0",writes,"\,0",yes
+0.0_);(0.0),writes,0.0_);\(0.0\),yes
+-0,writes,\-0,yes
+0-,writes,0\-,yes
+- 0 -,writes,\-\ 0\ \-,yes
+$0.00,writes,"""$""0.00",yes
+"""$""0.00",writes,"""$""0.00",yes
+\$0.00,writes,\$0.00,yes
+"£#,##0.00",writes,"\£#,##0.00",yes
+"€#,##0.00",writes,"\€#,##0.00",yes
+¥0,writes,\¥0,yes
+"[$€-2]#,##0",writes,"[$€-2]#,##0",yes
+"[$£-809]#,##0.00",writes,"[$£-809]#,##0.00",yes
+[$USD] 0,writes,[$USD]\ 0,yes
+[$-409]0.00,writes,[$-409]0.00,yes
+[$-en-US]0.00,refuses,[$-en-US]0.00,yes
+[$-F800]dddd,writes,[$-F800]dddd,yes
+"$ #,##0",writes,"""$""\ #,##0",yes
+0.00 $,writes,"0.00\ ""$""",yes
+"0.0"" kg""",writes,"0.0"" kg""",yes
+"0.0"" KG""",writes,"0.0"" KG""",yes
+"""x""0",writes,"""x""0",yes
+0.0\x,writes,0.0\x,yes
+0.0x,refuses,0.0x,yes
+"0.0""""",writes,"0.0""""",yes
+"""a""""b""0",writes,"""a""""b""0",yes
+"0.0"" kg""_)",writes,"0.0"" kg""_)",yes
+\a\b0,writes,\a\b0,yes
+yyyy-mm-dd,writes,yyyy\-mm\-dd,yes
+YYYY-MM-DD,writes,yyyy\-mm\-dd,yes
+dd/mm/yyyy,writes,dd/mm/yyyy,yes
+d mmm yyyy,writes,d\ mmm\ yyyy,yes
+hh:mm:ss,writes,hh:mm:ss,yes
+[h]:mm:ss.00,writes,[h]:mm:ss.00,yes
+ss.000,writes,ss.000,yes
+yyyy0,refuses,yyyy0,no
+0 yyyy,refuses,0 yyyy,no
+dd0,refuses,dd0,no
+yyyy;0,writes,yyyy;0,yes
+"0.0"" yyyy""",writes,"0.0"" yyyy""",yes
+hh:mm AM/PM,writes,hh:mm\ AM/PM,yes
+h:mm a/p,writes,h:mm\ a/p,yes
+ddd,writes,ddd,yes
+dddd,writes,dddd,yes
+mmmm,writes,mmmm,yes
+mmmmm,writes,mmmmm,yes
+yy,writes,yy,yes
+[mm]:ss,writes,[mm]:ss,yes
+[ss],writes,[ss],yes
+d-mmm-yyyy,writes,d\-mmm\-yyyy,yes
+yyyy-mm-dd hh:mm,writes,yyyy\-mm\-dd\ hh:mm,yes
+d/m/yy,writes,d/m/yy,yes
+yyyy\-mm,writes,yyyy\-mm,yes
+e,refuses,e,yes
+B1yyyy,refuses,B1yyyy,yes
+[RED]0.0,writes,[Red]0.0,yes
+[red]0.0,writes,[Red]0.0,yes
+[Red]0.0;[Blue]-0.0,writes,[Red]0.0;[Blue]\-0.0,yes
+[Color10]0,writes,[Color10]0,yes
+[COLOR10]0,writes,[Color10]0,yes
+[color 10]0,writes,[Color10]0,yes
+[>=100]0;0.00,writes,[>=100]0;0.00,yes
+"[<0]""neg"";0",writes,"[<0]""neg"";0",yes
+[>100][Red]0;0,writes,[Red][>100]0;0,yes
+[=1]0;0.0,writes,[=1]0;0.0,yes
++0,writes,\+0,yes
+0:0,refuses,0:0,no
+0^0,writes,0\^0,yes
+0'0,writes,0\'0,yes
+0{0},writes,0\{0\},yes
+0<0,writes,0\<0,yes
+0=0,writes,0\=0,yes
+0~0,writes,0\~0,yes
+0&0,writes,0\&0,yes
+0!0,writes,0\!0,yes
+0%%,writes,0%%,yes
+0.00_),writes,0.00_),yes
+* 0,writes,* 0,yes
+0.0;-0.0;0.0;@,writes,0.0;\-0.0;0.0;@,yes
+General;General,writes,General;General,yes
+"""x""General",writes,"""x""General",yes
+0;;,writes,0;;,yes
+;;;,writes,;;;,yes
+"@"" units""",writes,"@"" units""",yes
+0.0E-0,writes,0.0E-0,yes
+0E+0,writes,0E+0,yes
+0.0e+0,refuses,0.0e+0,no
+# ??/16,writes,#\ ??/16,yes
+0 ?/?,writes,0\ ?/?,yes
+#.##,writes,#.##,yes
+0.##,writes,0.##,yes
+#,writes,#,yes
+?.??,writes,?.??,yes
+"0,000",writes,"0,000",yes
+"00,0",writes,"#,000",yes
+"0,00",writes,"#,000",yes
+"#,##0,000",writes,"#,##0,000",yes
+"#,###,##0",writes,"#,###,##0",yes
+"?,??0",writes,"?,??0",yes
+"0,0.00",writes,"#,#00.00",yes
+"#,##0.00,",writes,"#,##0.00,",yes
+"0,0,0",writes,"#,000",yes
+"#,##",writes,"#,###",yes
+"#,",writes,"#,",yes
+"0,",writes,"0,",yes
+"#,##0 ,",writes,"#,##0\ \,",yes
+"0.0,0",refuses,"0.0,0",yes
+"#,##0;(#,##0)",writes,"#,##0;\(#,##0\)",yes
+"#,#0.0",writes,"#,##0.0",yes
+"0,000.0",writes,"0,000.0",yes
+"##,##0",writes,"##,##0",yes
+"#,###0",writes,"##,##0",yes
+h:mm A/P,writes,h:mm\ A/P,yes
+h AM/PM,writes,h\ AM/PM,yes
+hh:mm:ss AM/PM,writes,hh:mm:ss\ AM/PM,yes
+0>0,writes,0\>0,yes
+0`0,writes,0\`0,yes
+0 1,writes,0\ \1,yes
+10,writes,\10,yes
+0.01,writes,0.0\1,yes
+# ?/10,writes,#\ ?/10,yes
+0\-0,writes,0\-0,yes
+0\ 0,writes,0\ 0,yes
+0.0 ,writes,0.0\ ,yes
+0.0_ ,writes,0.0_ ,yes
+0*-,writes,0*-,yes
+0°,writes,0\°,yes
+0é,refuses,0é,no
+0½,writes,0\½,yes
+0§,writes,0\§,yes
+[Color 56]0,writes,[Color56]0,yes
+[COLOR57]0,refuses,[COLOR57]0,no
+[Colour10]0,refuses,[Colour10]0,yes
+[$USD-409] 0,writes,[$USD-409]\ 0,yes
+"[$$-409]#,##0.00",writes,"[$$-409]#,##0.00",yes
+[$€]0,writes,[$€]0,yes
+[>100][Red]0;[Blue]0,writes,[Red][>100]0;[Blue]0,yes
+[Red][>100]0,writes,[Red][>100]0;General,yes
+0.0%;(0.0%),writes,0.0%;\(0.0%\),yes
+"""$""#,##0;(""$""#,##0)",writes,"""$""#,##0;\(""$""#,##0\)",yes
+[hh]:mm,writes,[hh]:mm,yes
+[H],writes,[h],yes
+[m],writes,[m],yes
+"General ""x""",writes,"General\ ""x""",yes
+"0""",refuses,"0""",no
+0.0;;;,writes,0.0;;;,yes
+0;0;0;0;0,refuses,0;0;0;0;0,no
+\,refuses,\,no
+_,refuses,_,no
+*,refuses,*,no
+0\,refuses,0\,no
+#0#,writes,#0#,yes

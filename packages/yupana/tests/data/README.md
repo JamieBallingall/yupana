@@ -6,5 +6,10 @@ for a built-in, and `numFmtId`), or `rejected` if it refused the code outright. 
 again at 164 in each of the two rounds the data was gathered in, so only built-in ids mean
 anything across rows. `test_numfmt.py` checks the writer against every row.
 
+`numfmt-legality.csv` records, for each distinct custom code in the first file, whether a
+workbook holding it opens in the app: the writer's own spelling for a code it writes, or the raw
+code edited into an otherwise good workbook for a code it refuses. Every workbook the writer
+wrote opened. Most refused codes make the app refuse the whole file.
+
 Gathered on 2026-09-27 with `yupana-xlsx-oracle`'s session, on a machine set to regional format
 en-US and display scaling 100%.

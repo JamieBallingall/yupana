@@ -7,6 +7,9 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 dependencies = []
 
+[project.scripts]
+yupana = "yupana.cli:run"
+
 [build-system]
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"

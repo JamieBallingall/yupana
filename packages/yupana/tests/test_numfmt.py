@@ -149,3 +149,28 @@ def test_grouping_pads_to_four_and_groups_by_threes() -> None:
         "###,##0",
         "#,###,##0",
     ]
+
+
+LEGALITY_DATA = Path(__file__).parent / "data" / "numfmt-legality.csv"
+LEGALITY = list(
+    csv.DictReader(io.StringIO(LEGALITY_DATA.read_bytes().decode("utf-8"), newline=""))
+)
+
+
+def test_every_file_the_writer_wrote_opened_in_the_app() -> None:
+    written_rows = [row for row in LEGALITY if row["writer"] == "writes"]
+    assert len(written_rows) > 100
+    assert all(row["opens"] == "yes" for row in written_rows)
+
+
+@pytest.mark.parametrize("row", LEGALITY, ids=[r["sent"] for r in LEGALITY])
+def test_the_writer_still_writes_what_was_checked_in_the_app(
+    row: dict[str, str],
+) -> None:
+    """If the writer changes what it writes for a code, the app must be asked again."""
+    result = written(row["sent"])
+    if row["writer"] == "writes":
+        assert isinstance(result, tuple)
+        assert result[1] == row["file_code"]
+    else:
+        assert isinstance(result, str)
