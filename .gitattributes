@@ -1,2 +1,8 @@
 * text=auto eol=lf
 *.yup linguist-language=TSV
+
+# Committed, but generated: regenerate these, never edit them by hand.
+#   fixtures/*.values.csv   on Windows, with the spreadsheet app:
+#                           uv run yupana-xlsx-oracle build fixtures/<name>.yup
+#                               --values fixtures/<name>.values.csv
+#   uv.lock                 uv lock
