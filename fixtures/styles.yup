@@ -31,3 +31,16 @@ Styles	25	1	$	Red above and blue below
 Styles	25	2	.		bordertop=thin|bordertopcolor=FF0000|borderbottom=double|borderbottomcolor=0070C0
 Styles	27	1	$	A total	bold=true|bordertop=thin|borderbottom=double
 Styles	27	2	=	B11	bold=true|bordertop=thin|borderbottom=double|numberformat=#,##0.0
+Styles	*	3	|		columnwidth=14
+Styles	29	1	$	Left	halign=left
+Styles	29	2	#	1	halign=left
+Styles	30	1	$	Centred	halign=center
+Styles	30	2	#	2	halign=center
+Styles	31	1	$	Right	halign=right
+Styles	32	1	$	Indented from the right	halign=right|indent=2
+Styles	33	*	-		rowheight=45
+Styles	33	1	$	Top	valign=top
+Styles	33	2	$	Middle	valign=center|halign=center
+Styles	33	3	$	Bottom	valign=bottom
+Styles	34	*	-		rowheight=45
+Styles	34	1	$	A long label that wraps onto more lines within its cell	wrap=true|valign=top

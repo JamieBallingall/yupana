@@ -139,8 +139,23 @@ def styles_shown(sheet: Any) -> dict[str, object]:
         border = sheet.Cells(row, 2).Borders(edge)
         return border.LineStyle, border.Weight
 
+    def aligned(row: int, col: int) -> tuple[int, int, bool, int]:
+        cell = sheet.Cells(row, col)
+        return (
+            cell.HorizontalAlignment,
+            cell.VerticalAlignment,
+            cell.WrapText,
+            cell.IndentLevel,
+        )
+
     top, bottom, left, right = 8, 9, 7, 10
     return {
+        "unaligned": aligned(1, 1),
+        "left, centred and right": [aligned(row, 1)[0] for row in (29, 30, 31)],
+        "a number left and centred": [aligned(row, 2)[0] for row in (29, 30)],
+        "indented from the right": aligned(32, 1),
+        "top, middle and bottom": [aligned(33, col)[1] for col in (1, 2, 3)],
+        "wrapped": aligned(34, 1),
         "thin top": line(15, top),
         "medium bottom": line(17, bottom),
         "thick left": line(19, left),
@@ -175,7 +190,15 @@ def test_the_app_shows_each_style_as_the_writer_says(session: Session) -> None:
     # A colour is an integer with red lowest, and an unfilled cell has no colour index.
     # A line is the app's style and weight: continuous (1) thin (2), medium (-4138) or
     # thick (4); double (-4119); dotted (-4118); dashed (-4115); none (-4142).
+    # Alignments are too: general (1), left (-4131), centre (-4108), right (-4152); top
+    # (-4160), centre (-4108), bottom (-4107).
     assert found == {
+        "unaligned": (1, -4107, False, 0),
+        "left, centred and right": [-4131, -4108, -4152],
+        "a number left and centred": [-4131, -4108],
+        "indented from the right": (-4152, -4107, False, 2),
+        "top, middle and bottom": [-4160, -4108, -4107],
+        "wrapped": (1, -4160, True, 0),
         "thin top": (1, 2),
         "medium bottom": (1, -4138),
         "thick left": (1, 4),

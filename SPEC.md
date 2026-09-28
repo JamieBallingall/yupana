@@ -110,6 +110,11 @@ On a cell:
 | `fill` | a colour | The cell's background, filled solid |
 | `bordertop`, `borderbottom`, `borderleft`, `borderright` | `thin`, `medium`, `thick`, `double`, `dotted` or `dashed` | A line along that edge of the cell |
 | `bordertopcolor`, `borderbottomcolor`, `borderleftcolor`, `borderrightcolor` | a colour | The colour of the line along that edge, which the line's own key must also give |
+| `halign` | `left`, `center` or `right` | Where the contents sit across the cell. Without it, the spreadsheet app's general alignment: text to the left, numbers to the right |
+| `valign` | `top`, `center` or `bottom` | Where the contents sit up and down the cell. Without it, at the bottom |
+| `wrap` | `true` or `false` | Whether a text too long for the cell wraps onto more lines |
+
+An `indent` above 0 indents from the left, or from the right with `halign=right`. It cannot go with `halign=center`: the spreadsheet app indents only from an edge.
 
 A **colour** is six hexadecimal digits in upper case, `RRGGBB`: `FF0000` is red, and `DDEBF7` a pale blue. A cell without `fontcolor` has black text, one without `fill` no fill, and a line without a colour the spreadsheet app's automatic colour, black.
 

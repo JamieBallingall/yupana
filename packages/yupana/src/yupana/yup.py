@@ -75,6 +75,9 @@ _CELL_KEYS = (
     "fill",
     *(f"border{edge}" for edge in EDGES),
     *(f"border{edge}color" for edge in EDGES),
+    "halign",
+    "valign",
+    "wrap",
 )
 _KEYS = {"|": ("columnwidth",), "-": ("rowheight",)}
 _HOME = {key: "a cell" for key in _CELL_KEYS} | {
@@ -137,6 +140,22 @@ class Border:
     color: str | None = None
 
 
+class HorizontalAlignment(StrEnum):
+    """Where a cell's contents sit across it, named as the ``halign`` key names it."""
+
+    LEFT = "left"
+    CENTER = "center"
+    RIGHT = "right"
+
+
+class VerticalAlignment(StrEnum):
+    """Where a cell's contents sit up and down it, named as the ``valign`` key names it."""
+
+    TOP = "top"
+    CENTER = "center"
+    BOTTOM = "bottom"
+
+
 @dataclass(frozen=True, slots=True)
 class Format:
     """A cell's formats. ``None`` means the key is absent. A colour is ``RRGGBB``."""
@@ -152,6 +171,9 @@ class Format:
     border_bottom: Border | None = None
     border_left: Border | None = None
     border_right: Border | None = None
+    halign: HorizontalAlignment | None = None
+    valign: VerticalAlignment | None = None
+    wrap: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -501,7 +523,14 @@ def _cell_format(pairs: dict[str, str]) -> Result[Format, list[str]]:
         border_bottom=border("bottom"),
         border_left=border("left"),
         border_right=border("right"),
+        halign=parsed("halign", _choice("halign", tuple(HorizontalAlignment))),
+        valign=parsed("valign", _choice("valign", tuple(VerticalAlignment))),
+        wrap=parsed("wrap", _flag("wrap")),
     )
+    if fmt.indent and fmt.halign is HorizontalAlignment.CENTER:
+        problems.append(
+            "indent cannot go with halign=center: the app indents only from an edge"
+        )
     return Err(problems) if problems else Ok(fmt)
 
 

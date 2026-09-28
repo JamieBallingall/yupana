@@ -33,6 +33,7 @@ from yupana.yup import (
     Number,
     Text,
     Underline,
+    VerticalAlignment,
     Yup,
     quoted,
 )
@@ -188,10 +189,19 @@ def _new_styles() -> _Styles:
 
 
 def _alignment(fmt: Format) -> _Alignment:
-    """An indent, left-aligned as the app aligns an indented cell."""
-    if not fmt.indent:
-        return ()
-    return (("horizontal", "left"), ("indent", str(fmt.indent)))
+    """The ``<alignment>`` attributes, as the app writes them: an indented cell aligned
+    left unless it says otherwise, and nothing for the defaults, bottom and no wrap."""
+    horizontal = fmt.halign.value if fmt.halign else "left" if fmt.indent else None
+    attributes: list[tuple[str, str]] = []
+    if horizontal is not None:
+        attributes.append(("horizontal", horizontal))
+    if fmt.valign not in (None, VerticalAlignment.BOTTOM):
+        attributes.append(("vertical", fmt.valign.value))
+    if fmt.wrap:
+        attributes.append(("wrapText", "1"))
+    if fmt.indent:
+        attributes.append(("indent", str(fmt.indent)))
+    return tuple(attributes)
 
 
 def _style(fmt: Format, styles: _Styles) -> Result[int, str]:

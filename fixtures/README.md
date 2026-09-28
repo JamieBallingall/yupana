@@ -10,7 +10,7 @@ Hand-written `.yup` files, each with `name.values.csv`: what the spreadsheet app
 | `errors` | every error the app shows, and one passed along |
 | `texts` | texts the app would otherwise take for something else, and XML's awkward characters |
 | `formats` | number formats, built in and custom, indents and column widths |
-| `styles` | bold, italic, every underline, font colours, fills and every kind of line along an edge, on text, numbers, formulas and blank cells |
+| `styles` | bold, italic, every underline, font colours, fills, every kind of line along an edge, and every alignment, on text, numbers, formulas and blank cells |
 | `sizes` | the width of every column and the height of every row, single widths and heights, hidden columns and rows, a blank cell with a format, and a sheet with no cells |
 | `sheets` | three sheets, quoted names, and references between them |
 | `model` | a small model laid out with labels, numbers, formulas and formats |

@@ -10,12 +10,14 @@ from yupana.yup import (
     Column,
     Format,
     Formula,
+    HorizontalAlignment,
     LineStyle,
     Logical,
     Number,
     Row,
     Text,
     Underline,
+    VerticalAlignment,
     Yup,
     read_yup,
 )
@@ -422,6 +424,11 @@ LINES = "thin, medium, thick, double, dotted or dashed"
         ("borderright=thin|borderrightcolor=red", f'borderrightcolor {A_COLOUR}, not "red"'),
         ("borderbottom=thin|borderbottom=thick", "the format key borderbottom appears twice"),
         ("bordercolor=FF0000", 'unknown format key "bordercolor"'),
+        ("halign=centre", 'halign is left, center or right, not "centre"'),
+        ("halign=general", 'halign is left, center or right, not "general"'),
+        ("valign=middle", 'valign is top, center or bottom, not "middle"'),
+        ("wrap=yes", 'wrap is true or false, not "yes"'),
+        ("halign=center|indent=1", "indent cannot go with halign=center"),
         ("fill=GG0000", 'not "GG0000"'),
     ],
 )  # fmt: skip
@@ -472,6 +479,21 @@ def test_every_bad_value_on_a_line_is_reported() -> None:
                 border_right=Border(LineStyle.DASHED),
             ),
         ),
+        ("halign=left", Format(halign=HorizontalAlignment.LEFT)),
+        (
+            "halign=right|indent=2",
+            Format(indent=2, halign=HorizontalAlignment.RIGHT),
+        ),
+        ("halign=center|indent=0", Format(indent=0, halign=HorizontalAlignment.CENTER)),
+        (
+            "valign=top|wrap=true",
+            Format(valign=VerticalAlignment.TOP, wrap=True),
+        ),
+        (
+            "valign=center|wrap=false",
+            Format(valign=VerticalAlignment.CENTER, wrap=False),
+        ),
+        ("valign=bottom", Format(valign=VerticalAlignment.BOTTOM)),
     ],
 )
 def test_a_format_is_accepted(fmt: str, expected: Format) -> None:

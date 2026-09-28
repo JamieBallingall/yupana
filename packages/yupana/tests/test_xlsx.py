@@ -446,6 +446,34 @@ def test_borders_are_shared_and_written_edge_by_edge_as_the_app_writes_them() ->
     ]
 
 
+@pytest.mark.parametrize(
+    ("fmt", "alignment"),
+    [
+        ("halign=left", '<alignment horizontal="left"/>'),
+        ("halign=center", '<alignment horizontal="center"/>'),
+        ("halign=right|indent=2", '<alignment horizontal="right" indent="2"/>'),
+        ("indent=3", '<alignment horizontal="left" indent="3"/>'),
+        ("valign=top", '<alignment vertical="top"/>'),
+        ("valign=center|halign=center", '<alignment horizontal="center" vertical="center"/>'),
+        ("wrap=true", '<alignment wrapText="1"/>'),
+        ("wrap=true|valign=top|halign=left|indent=1",
+         '<alignment horizontal="left" vertical="top" wrapText="1" indent="1"/>'),
+    ],
+)  # fmt: skip
+def test_alignment_is_written_as_the_app_writes_it(fmt: str, alignment: str) -> None:
+    xfs = matched(r"<cellXfs[^>]*>(.*)</cellXfs>", styles(yup(f"S\t1\t1\t$\ta\t{fmt}")))
+    assert xfs == (
+        xf() + '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" '
+        f'applyAlignment="1">{alignment}</xf>'
+    )
+
+
+@pytest.mark.parametrize("fmt", ["valign=bottom", "wrap=false", "indent=0"])
+def test_the_default_alignment_is_no_alignment(fmt: str) -> None:
+    xfs = matched(r"<cellXfs[^>]*>(.*)</cellXfs>", styles(yup(f"S\t1\t1\t$\ta\t{fmt}")))
+    assert xfs == xf()
+
+
 def test_a_format_code_is_escaped_as_an_attribute() -> None:
     found = styles(yup('S\t1\t1\t#\t1\tnumberformat=0.0" <kg>"'))
     assert 'formatCode="0.0&quot; &lt;kg&gt;&quot;"' in found

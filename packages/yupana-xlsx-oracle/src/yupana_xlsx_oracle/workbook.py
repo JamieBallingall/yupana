@@ -27,6 +27,7 @@ from yupana.yup import (
     Content,
     Format,
     Formula,
+    HorizontalAlignment,
     Line,
     LineStyle,
     Logical,
@@ -34,6 +35,7 @@ from yupana.yup import (
     Row,
     Text,
     Underline,
+    VerticalAlignment,
     Yup,
     utf16_length,
 )
@@ -55,6 +57,17 @@ _UNDERLINES = {
     Underline.DOUBLE: -4119,
     Underline.SINGLE_ACCOUNTING: 4,
     Underline.DOUBLE_ACCOUNTING: 5,
+}
+# The app's constants for each alignment.
+_HORIZONTAL = {
+    HorizontalAlignment.LEFT: -4131,
+    HorizontalAlignment.CENTER: -4108,
+    HorizontalAlignment.RIGHT: -4152,
+}
+_VERTICAL = {
+    VerticalAlignment.TOP: -4160,
+    VerticalAlignment.CENTER: -4108,
+    VerticalAlignment.BOTTOM: -4107,
 }
 # The app's index of each edge, and the style and weight it saves as each line.
 _EDGES = {"left": 7, "top": 8, "bottom": 9, "right": 10}
@@ -161,6 +174,16 @@ def _formats(target: Any, fmt: Format) -> list[tuple[str, Callable[[], None]]]:
     if fmt.number_format is not None:
         what = f"the number format {fmt.number_format!r}"
         settings.append((what, cell, "NumberFormat", fmt.number_format))
+    # Alignment before the indent: aligning a cell afresh can reset its indent.
+    if fmt.halign is not None:
+        what = f"the alignment {fmt.halign.value}"
+        horizontal = _HORIZONTAL[fmt.halign]
+        settings.append((what, cell, "HorizontalAlignment", horizontal))
+    if fmt.valign is not None:
+        what = f"the alignment {fmt.valign.value}"
+        settings.append((what, cell, "VerticalAlignment", _VERTICAL[fmt.valign]))
+    if fmt.wrap is not None:
+        settings.append(("wrapping", cell, "WrapText", fmt.wrap))
     if fmt.indent is not None:
         settings.append((f"the indent {fmt.indent}", cell, "IndentLevel", fmt.indent))
     if fmt.bold is not None:
