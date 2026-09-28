@@ -1,6 +1,6 @@
 # yupana
 
-**A spreadsheet as text.** A `.yup` file lists the cells of a workbook, one per line: where each cell is, what is in it, and how it is formatted. Other lines size its columns and rows. `yupana` reads a `.yup` file, checks it against [the specification](SPEC.md), reporting every problem at once, and writes it as an xlsx workbook of live formulas.
+**A spreadsheet as text.** A `.yup` file lists the cells of a workbook, one per line: where each cell is, what is in it, and how it is formatted. Other lines size its columns and rows, and say how each sheet is shown. `yupana` reads a `.yup` file, checks it against [the specification](SPEC.md), reporting every problem at once, and writes it as an xlsx workbook of live formulas.
 
 **Not stable yet.** The format is at version 0.0.2, and it, the API and the names may all change.
 

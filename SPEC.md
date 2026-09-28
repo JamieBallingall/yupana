@@ -107,7 +107,7 @@ On a cell:
 | `indent` | an integer from 0 to 250, written as `row` is (or `0`) | The indent level of the cell's contents |
 | `bold` | `true` or `false` | Whether the text is bold |
 | `italic` | `true` or `false` | Whether the text is italic |
-| `underline` | `single`, `double`, `singleaccounting` or `doubleaccounting` | How the text is underlined. The accounting underlines sit lower, and run the width of the cell for a text |
+| `underline` | `single`, `double`, `singleaccounting` or `doubleaccounting` | How the text is underlined: once or twice, plainly or in the accounting style, which sits lower |
 | `fontcolor` | a colour | The colour of the text |
 | `fill` | a colour | The cell's background, filled solid |
 | `bordertop`, `borderbottom`, `borderleft`, `borderright` | `thin`, `medium`, `thick`, `double`, `dotted` or `dashed` | A line along that edge of the cell |
