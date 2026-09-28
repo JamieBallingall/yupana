@@ -1,9 +1,6 @@
 # Fixtures
 
-Hand-written `.yup` files, each with `name.values.csv`: what the spreadsheet app computed for it,
-as `yupana-xlsx-oracle build` wrote it. Both packages' tests use them: `yupana`'s readers must read
-every one, the oracle recomputes each and must agree exactly, and the xlsx writer's output must
-compute to the same values.
+Hand-written `.yup` files, each with `name.values.csv`: what the spreadsheet app computed for it, as `yupana-xlsx-oracle build` wrote it. Both packages' tests use them: `yupana`'s readers must read every one, the oracle recomputes each and must agree exactly, and the xlsx writer's output must compute to the same values.
 
 | Fixture | Covers |
 |---|---|

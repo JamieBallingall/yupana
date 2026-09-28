@@ -1,10 +1,6 @@
 # The values CSV
 
-**Internal.** A format for testing, not part of the `.yup` standard in [`SPEC.md`](../../SPEC.md),
-and it may change at any time. It carries the value computed for every cell of a `.yup` file, so
-that two computations of one file can be compared: a program that writes `.yup` files writes its
-own values beside them, and `yupana-xlsx-oracle` compares them with the spreadsheet app's.
-`yupana.values` reads and writes it.
+**Internal.** A format for testing, not part of the `.yup` standard in [`SPEC.md`](../../SPEC.md), and it may change at any time. It carries the value computed for every cell of a `.yup` file, so that two computations of one file can be compared: a program that writes `.yup` files writes its own values beside them, and `yupana-xlsx-oracle` compares them with the spreadsheet app's. `yupana.values` reads and writes it.
 
 ## The file
 
@@ -20,8 +16,7 @@ own values beside them, and `yupana-xlsx-oracle` compares them with the spreadsh
 | `4` | logical | `TRUE` or `FALSE` |
 | `16` | error | The error as the app shows it: `#N/A`, `#DIV/0!`, `#VALUE!`, `#REF!`, `#NAME?`, `#NUM!`, `#NULL!`. Any text starting with `#` is accepted, since apps have more |
 
-There is no blank: every listed cell was written, and a formula that returns empty text has type
-`2` and an empty value.
+There is no blank: every listed cell was written, and a formula that returns empty text has type `2` and an empty value.
 
 ## An example
 
@@ -41,6 +36,4 @@ Model,4,2,1,1080.0
 
 ## What a reader checks
 
-The header, that every line has five fields, that `row` and `col` are written as in `.yup`, that
-`type` is one of the four codes, and that each `value` suits its type: a number in JSON's grammar
-that is finite, `TRUE` or `FALSE`, or text starting with `#`.
+The header, that every line has five fields, that `row` and `col` are written as in `.yup`, that `type` is one of the four codes, and that each `value` suits its type: a number in JSON's grammar that is finite, `TRUE` or `FALSE`, or text starting with `#`.
