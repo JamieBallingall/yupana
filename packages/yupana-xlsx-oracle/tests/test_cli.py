@@ -11,10 +11,12 @@ from yupana_xlsx_oracle.cli import main
 
 TARGET = Path(__file__).resolve().parents[3] / "target" / "oracle-tests" / "cli"
 YUP = (
-    PREAMBLE + "Model\t1\t1\t$Revenue\tcolumnwidth=20\n"
-    "Model\t1\t2\t#1000\tcolumnwidth=10|numberformat=#,##0\n"
-    "Model\t2\t1\t$Next\t\n"
-    "Model\t2\t2\t=B1*(1+0.08)\tnumberformat=#,##0\n"
+    PREAMBLE + "Model\t1\t1\t$\tRevenue\t\n"
+    "Model\t1\t2\t#\t1000\tnumberformat=#,##0\n"
+    "Model\t2\t1\t$\tNext\t\n"
+    "Model\t2\t2\t=\tB1*(1+0.08)\tnumberformat=#,##0\n"
+    "Model\t*\t1\t|\t\tcolumnwidth=20\n"
+    "Model\t*\t2\t|\t\tcolumnwidth=10\n"
 )
 VALUES = (
     "sheet,row,col,type,value\n"
@@ -57,12 +59,13 @@ def test_a_missing_yup_file_is_reported_without_starting_the_app() -> None:
 
 
 def test_a_yup_file_that_does_not_read_is_reported_line_by_line() -> None:
-    path = file("broken.yup", YUP.replace("#1000", "#01").replace("=B1*(1+0.08)", "="))
+    broken = YUP.replace("\t1000\t", "\t01\t").replace("\tB1*(1+0.08)\t", "\t\t")
+    path = file("broken.yup", broken)
     status, _, err = run("build", str(path))
     assert status == 1
     assert err.splitlines() == [
         f'{path}: line 4: a number is written in JSON\'s grammar, not "01"',
-        f"{path}: line 6: a formula needs something after the =",
+        f"{path}: line 6: a formula cannot be empty",
     ]
 
 

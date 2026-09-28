@@ -1,36 +1,38 @@
-yup 0.0.1 Yupana Straight Line Spreadsheet Format
-sheet	row	col	cell	format
-Contents	1	1	$Kind	columnwidth=16
-Contents	1	2	$Example	columnwidth=24
-Contents	2	1	$number	
-Contents	2	2	#1234.5	
-Contents	3	1	$negative zero	
-Contents	3	2	#-0	
-Contents	4	1	$tenth	
-Contents	4	2	#0.1	
-Contents	5	1	$largest	
-Contents	5	2	#9.99999999999999e307	
-Contents	6	1	$smallest normal	
-Contents	6	2	#2.2250738585072014e-308	
-Contents	7	1	$tiny	
-Contents	7	2	#-1E-300	
-Contents	8	1	$seventeen digits	
-Contents	8	2	#12345678901234567	
-Contents	9	1	$pi	
-Contents	9	2	#3.141592653589793	
-Contents	10	1	$text	
-Contents	10	2	$plain text	
-Contents	11	1	$true	
-Contents	11	2	?TRUE	
-Contents	12	1	$false	
-Contents	12	2	?FALSE	
-Contents	13	1	$formula	
-Contents	13	2	=B2*2	
-Contents	14	1	$formula text	
-Contents	14	2	="a"&"b"	
-Contents	15	1	$formula logical	
-Contents	15	2	=B11	
-Contents	16	1	$empty text	
-Contents	16	2	=""	
-Contents	17	1	$largest double	
-Contents	17	2	#1.7976931348623157e308	
+yup 0.0.2 Yupana Straight Line Spreadsheet Format
+sheet	row	col	type	cell	format
+Contents	*	1	|		columnwidth=16
+Contents	1	1	$	Kind	
+Contents	*	2	|		columnwidth=24
+Contents	1	2	$	Example	
+Contents	2	1	$	number	
+Contents	2	2	#	1234.5	
+Contents	3	1	$	negative zero	
+Contents	3	2	#	-0	
+Contents	4	1	$	tenth	
+Contents	4	2	#	0.1	
+Contents	5	1	$	largest	
+Contents	5	2	#	9.99999999999999e307	
+Contents	6	1	$	smallest normal	
+Contents	6	2	#	2.2250738585072014e-308	
+Contents	7	1	$	tiny	
+Contents	7	2	#	-1E-300	
+Contents	8	1	$	seventeen digits	
+Contents	8	2	#	12345678901234567	
+Contents	9	1	$	pi	
+Contents	9	2	#	3.141592653589793	
+Contents	10	1	$	text	
+Contents	10	2	$	plain text	
+Contents	11	1	$	true	
+Contents	11	2	?	TRUE	
+Contents	12	1	$	false	
+Contents	12	2	?	FALSE	
+Contents	13	1	$	formula	
+Contents	13	2	=	B2*2	
+Contents	14	1	$	formula text	
+Contents	14	2	=	"a"&"b"	
+Contents	15	1	$	formula logical	
+Contents	15	2	=	B11	
+Contents	16	1	$	empty text	
+Contents	16	2	=	""	
+Contents	17	1	$	largest double	
+Contents	17	2	#	1.7976931348623157e308	

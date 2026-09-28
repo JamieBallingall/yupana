@@ -7,13 +7,18 @@ from yupana.yup import quoted
 from yupana_xlsx_oracle.session import Stalled
 
 
-def where(sheet: str, row: int, col: int) -> str:
-    """A cell's position, named as a ``.yup`` file names it.
+def where(sheet: str, row: int | None, col: int | None) -> str:
+    """A cell's position, or a row's or a column's, named as a ``.yup`` file names it.
 
-    >>> where("Model", 2, 3)
-    'sheet "Model", row 2, col 3'
+    >>> where("Model", 2, 3), where("Model", None, 3)
+    ('sheet "Model", row 2, col 3', 'sheet "Model", col 3')
     """
-    return f"sheet {quoted(sheet)}, row {row}, col {col}"
+    named = [f"sheet {quoted(sheet)}"]
+    if row is not None:
+        named.append(f"row {row}")
+    if col is not None:
+        named.append(f"col {col}")
+    return ", ".join(named)
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,12 +34,16 @@ class Refused:
 
 @dataclass(frozen=True, slots=True)
 class Rejected:
-    """The app rejected one cell of a ``.yup`` file, or holds no usable value for it."""
+    """The app rejected one line of a ``.yup`` file, or holds no usable value for a cell.
+
+    A line for a column has no row, and a line for a row no col; the line for every
+    column, or every row, has neither.
+    """
 
     line: int
     sheet: str
-    row: int
-    col: int
+    row: int | None
+    col: int | None
     message: str
 
     def __str__(self) -> str:

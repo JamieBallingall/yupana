@@ -1,11 +1,14 @@
-"""The README's example file: the committed copy is a good file, and the README shows it."""
+"""The documents' examples: the README's is a good file and the README shows it, and the
+specification's is a good file too."""
 
 import re
 from pathlib import Path
 
 from yupana import read_yup, write_xlsx
 
-README = Path(__file__).resolve().parents[3] / "README.md"
+ROOT = Path(__file__).resolve().parents[3]
+README = ROOT / "README.md"
+SPEC = ROOT / "SPEC.md"
 EXAMPLE = Path(__file__).resolve().parent / "examples" / "readme.yup"
 
 
@@ -18,20 +21,34 @@ def as_file(shown: str) -> str:
     return re.sub(r" *→ *", "\t", shown)
 
 
+def shown(document: Path) -> str:
+    """The first ``.yup`` file a document shows, as the file itself."""
+    text = document.read_bytes().decode()
+    block = re.search(r"```text\n(yup .*?)```", text, re.DOTALL)
+    assert block is not None
+    return as_file(block.group(1))
+
+
 def test_the_readme_example_is_a_good_yup_file() -> None:
     yup = read_yup(EXAMPLE.read_bytes().decode()).unwrap()
-    assert len(yup.cells) == 4
+    assert (len(yup.cells), len(yup.columns)) == (4, 2)
     assert write_xlsx(yup).is_ok()
 
 
 def test_the_readme_shows_the_example_file() -> None:
-    text = README.read_bytes().decode()
-    block = re.search(r"```text\n(yup .*?)```", text, re.DOTALL)
-    assert block is not None
-    assert as_file(block.group(1)) == EXAMPLE.read_bytes().decode()
+    assert shown(README) == EXAMPLE.read_bytes().decode()
 
 
-def test_an_empty_format_still_ends_with_a_tab() -> None:
-    assert (
-        as_file("Model →  2  →  1  → $Revenue     →\n") == "Model\t2\t1\t$Revenue\t\n"
+def test_the_specifications_example_is_a_good_yup_file() -> None:
+    yup = read_yup(shown(SPEC)).unwrap()
+    assert (len(yup.cells), len(yup.columns), len(yup.rows)) == (8, 2, 1)
+    assert write_xlsx(yup).is_ok()
+
+
+def test_an_empty_field_is_still_a_field() -> None:
+    assert as_file("Model →  2  →  1  →  $   → Revenue →\n") == (
+        "Model\t2\t1\t$\tRevenue\t\n"
+    )
+    assert as_file("Model →  *  →  1  →  |   →         → columnwidth=20\n") == (
+        "Model\t*\t1\t|\t\tcolumnwidth=20\n"
     )

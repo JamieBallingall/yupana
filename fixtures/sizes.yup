@@ -1,0 +1,23 @@
+yup 0.0.2 Yupana Straight Line Spreadsheet Format
+sheet	row	col	type	cell	format
+Sizes	*	*	|		columnwidth=12
+Sizes	*	*	-		rowheight=18
+Sizes	*	1	|		columnwidth=30
+Sizes	1	1	$	Every column 12 wide and every row 18 high	
+Sizes	2	1	$	Except column A at 30	
+Sizes	3	*	-		rowheight=6
+Sizes	4	1	$	Row 3 is 6 high and row 5 hidden	
+Sizes	5	*	-		rowheight=0
+Sizes	5	1	$	Hidden	
+Sizes	5	2	#	5	
+Sizes	*	3	|		columnwidth=0
+Sizes	6	1	$	Column C is hidden	
+Sizes	6	3	#	3	
+Sizes	7	1	$	The tallest row	
+Sizes	7	*	-		rowheight=409
+Sizes	8	1	$	B8 is blank but formatted	
+Sizes	8	2	.		numberformat=0.00
+Sizes	9	1	$	The sum of the two hidden numbers	
+Sizes	9	2	=	B5+C6	numberformat=0.00
+Only sizes	*	2	|		columnwidth=4.5
+Only sizes	2	*	-		rowheight=30

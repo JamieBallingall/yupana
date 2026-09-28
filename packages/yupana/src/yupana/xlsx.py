@@ -7,7 +7,7 @@ Formula cells carry no cached value: the app computes everything when it opens t
 The output is deterministic: the same ``.yup`` gives the same bytes.
 
 >>> from yupana.yup import PREAMBLE, read_yup
->>> yup = read_yup(PREAMBLE + "Model\\t1\\t1\\t#1\\tcolumnwidth=10\\n")
+>>> yup = read_yup(PREAMBLE + "Model\\t1\\t1\\t#\\t1\\tnumberformat=0\\n")
 >>> data = write_xlsx(yup.unwrap()).unwrap()
 >>> data[:2], data == write_xlsx(yup.unwrap()).unwrap()
 (b'PK', True)
@@ -24,8 +24,9 @@ from yupana.numfmt import number_format_id
 from yupana.result import Err, Ok, Result
 from yupana.yup import (
     ESCAPE_SHAPE,
+    Blank,
     Cell,
-    Default,
+    Format,
     Formula,
     Logical,
     Number,
@@ -124,7 +125,16 @@ def stored_width(width: float) -> float:
     return math.trunc(pixels * 256 / MAX_DIGIT_WIDTH) / 256
 
 
-def _where(cell: Cell) -> str:
+def decimal(value: float) -> str:
+    """A number as an attribute value: whole numbers without a decimal point.
+
+    >>> decimal(6.0), decimal(20.25), decimal(0.0)
+    ('6', '20.25', '0')
+    """
+    return str(int(value)) if value == int(value) else repr(value)
+
+
+def _where(cell: Cell | Blank) -> str:
     return f"sheet {quoted(cell.sheet)}, row {cell.row}, col {cell.col}"
 
 
@@ -136,23 +146,25 @@ class _Styles:
     keys: dict[tuple[int, int], int]
 
 
-def _style(cell: Cell, styles: _Styles) -> Result[int, str]:
-    """A cell's index in ``cellXfs``, allocating its number format and style if new."""
+def _style(fmt: Format, styles: _Styles) -> Result[int, str]:
+    """A format's index in ``cellXfs``, allocating its number format and style if new."""
     number_format = 0
-    if cell.format.number_format is not None:
-        match number_format_id(cell.format.number_format, styles.custom):
+    if fmt.number_format is not None:
+        match number_format_id(fmt.number_format, styles.custom):
             case Err(reason):
                 return Err(reason)
             case Ok(found):
                 number_format = found
-    key = (number_format, cell.format.indent or 0)
+    key = (number_format, fmt.indent or 0)
     return Ok(styles.keys.setdefault(key, len(styles.keys)))
 
 
-def _cell(cell: Cell, style: int, strings: dict[str, int]) -> str:
+def _cell(cell: Cell | Blank, style: int, strings: dict[str, int]) -> str:
     attributes = f'r="{address(cell.row, cell.col)}"'
     if style:
         attributes += f' s="{style}"'
+    if isinstance(cell, Blank):
+        return f"<c {attributes}/>"
     match cell.content:
         case Number(value):
             return f"<c {attributes}><v>{value!r}</v></c>"
@@ -165,10 +177,24 @@ def _cell(cell: Cell, style: int, strings: dict[str, int]) -> str:
             return f"<c {attributes}><f>{escape_text(text[1:])}</f></c>"
 
 
-def _cols(widths: dict[int, float]) -> str:
-    """The ``<cols>`` element, adjacent columns of the same width merged, as the app does."""
+@dataclass(frozen=True, slots=True)
+class _Sheet:
+    """One sheet as the writer gathers it: each cell's XML by row and col, and the
+    widths and heights its lines give, by col or row, ``None`` meaning every one."""
+
+    cells: dict[int, dict[int, str]]
+    widths: dict[int | None, float]
+    heights: dict[int | None, float]
+
+
+def _cols(widths: dict[int | None, float]) -> str:
+    """The ``<cols>`` element, adjacent columns of the same width merged, as the app does.
+
+    The width of every column is the sheet's default, in ``<sheetFormatPr>``, so it has
+    no ``<col>`` of its own.
+    """
     runs: list[tuple[int, int, float]] = []
-    for col in sorted(widths):
+    for col in sorted(c for c in widths if c is not None):
         stored = stored_width(widths[col]) if widths[col] else 0.0
         if runs and runs[-1][1] == col - 1 and runs[-1][2] == stored:
             runs[-1] = (runs[-1][0], col, stored)
@@ -185,27 +211,67 @@ def _cols(widths: dict[int, float]) -> str:
     return f"<cols>{items}</cols>"
 
 
-def _worksheet(
-    cells: list[tuple[Cell, str]], widths: dict[int, float], first: bool
+def _sheet_format(sheet: _Sheet) -> str:
+    """The sheet's defaults: the app's, or the width and height of every column and row.
+
+    The app writes every column's width as the default column width, padded as a
+    column's is, and every row's height as a custom default row height.
+    """
+    attributes = ""
+    if (width := sheet.widths.get(None)) is not None:
+        attributes += f' defaultColWidth="{stored_width(width)!r}"'
+    if (height := sheet.heights.get(None)) is not None:
+        attributes += f' defaultRowHeight="{decimal(height)}" customHeight="1"'
+    else:
+        attributes += f' defaultRowHeight="{DEFAULT_ROW_HEIGHT}"'
+    return f"<sheetFormatPr{attributes}/>"
+
+
+def _row(
+    number: int, cells: dict[int, str], height: float | None, every: float | None
 ) -> str:
-    rows: dict[int, list[tuple[int, str]]] = {}
-    for cell, xml in cells:
-        rows.setdefault(cell.row, []).append((cell.col, xml))
-    cols = [cell.col for cell, _ in cells]
-    top_left = address(min(rows), min(cols))
-    bottom_right = address(max(rows), max(cols))
-    dimension = top_left if top_left == bottom_right else f"{top_left}:{bottom_right}"
+    """A ``<row>``, whose height of 0 hides it.
+
+    A row with no height of its own takes the height of every row, if the file gives
+    one, written on the row as the app writes it: the app sizes a ``<row>`` without a
+    height to fit its cells, whatever the sheet's default. A hidden row keeps that height
+    to unhide to.
+    """
+    shown = every if height is None or height == 0 else height
+    attributes = f'r="{number}"'
+    if shown is not None:
+        attributes += f' ht="{decimal(shown)}"'
+    if height == 0:
+        attributes += ' hidden="1"'
+    if shown is not None:
+        attributes += ' customHeight="1"'
+    if not cells:
+        return f"<row {attributes}/>"
+    return f"<row {attributes}>" + "".join(cells[c] for c in sorted(cells)) + "</row>"
+
+
+def _dimension(cells: dict[int, dict[int, str]]) -> str:
+    """The range the cells span, or ``A1`` for a sheet with none, as the app writes it."""
+    if not cells:
+        return "A1"
+    cols = [col for row in cells.values() for col in row]
+    top_left = address(min(cells), min(cols))
+    bottom_right = address(max(cells), max(cols))
+    return top_left if top_left == bottom_right else f"{top_left}:{bottom_right}"
+
+
+def _worksheet(sheet: _Sheet, first: bool) -> str:
+    numbered = sorted(set(sheet.cells) | {r for r in sheet.heights if r is not None})
+    every = sheet.heights.get(None)
     data = "".join(
-        f'<row r="{row}">' + "".join(xml for _, xml in sorted(rows[row])) + "</row>"
-        for row in sorted(rows)
+        _row(r, sheet.cells.get(r, {}), sheet.heights.get(r), every) for r in numbered
     )
     selected = ' tabSelected="1"' if first else ""
     return (
         f'<worksheet xmlns="{MAIN}" xmlns:r="{RELATIONSHIPS}">'
-        f'<dimension ref="{dimension}"/>'
+        f'<dimension ref="{_dimension(sheet.cells)}"/>'
         f'<sheetViews><sheetView{selected} workbookViewId="0"/></sheetViews>'
-        f'<sheetFormatPr defaultRowHeight="{DEFAULT_ROW_HEIGHT}"/>'
-        f"{_cols(widths)}<sheetData>{data}</sheetData>"
+        f"{_sheet_format(sheet)}{_cols(sheet.widths)}<sheetData>{data}</sheetData>"
         '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" '
         'header="0.3" footer="0.3"/></worksheet>'
     )
@@ -285,26 +351,26 @@ def write_xlsx(yup: Yup) -> Result[bytes, tuple[WriteError, ...]]:
     """
     styles = _Styles(custom={}, keys={(0, 0): 0})
     strings: dict[str, int] = {}
-    per_sheet: dict[str, list[tuple[Cell, str]]] = {name: [] for name in yup.sheets}
-    widths: dict[str, dict[int, float]] = {name: {} for name in yup.sheets}
+    sheets = {name: _Sheet(cells={}, widths={}, heights={}) for name in yup.sheets}
     errors: list[WriteError] = []
     text_cells = 0
-    for cell in yup.cells:
-        match _style(cell, styles):
+    # In file order, so that styles and shared strings are numbered in order of first use.
+    for cell in sorted((*yup.cells, *yup.blanks), key=lambda c: c.line):
+        match _style(cell.format, styles):
             case Err(reason):
                 errors.append(WriteError(cell.line, f"{_where(cell)}: {reason}"))
                 continue
             case Ok(style):
                 pass
-        match cell.format.column_width:
-            case float() as width:
-                widths[cell.sheet][cell.col] = width
-            case Default() | None:
-                pass
-        text_cells += isinstance(cell.content, Text)
-        per_sheet[cell.sheet].append((cell, _cell(cell, style, strings)))
+        text_cells += isinstance(cell, Cell) and isinstance(cell.content, Text)
+        row = sheets[cell.sheet].cells.setdefault(cell.row, {})
+        row[cell.col] = _cell(cell, style, strings)
     if errors:
         return Err(tuple(errors))
+    for column in yup.columns:
+        sheets[column.sheet].widths[column.col] = column.width
+    for row_line in yup.rows:
+        sheets[row_line.sheet].heights[row_line.row] = row_line.height
 
     count = len(yup.sheets)
     overrides = [("/xl/workbook.xml", f"{_SHEETML}.sheet.main+xml")]
@@ -357,10 +423,7 @@ def write_xlsx(yup: Yup) -> Result[bytes, tuple[WriteError, ...]]:
         ("xl/_rels/workbook.xml.rels", workbook_relationships),
     ]
     parts += [
-        (
-            f"xl/worksheets/sheet{i}.xml",
-            _worksheet(per_sheet[name], widths[name], first=i == 1),
-        )
+        (f"xl/worksheets/sheet{i}.xml", _worksheet(sheets[name], first=i == 1))
         for i, name in enumerate(yup.sheets, start=1)
     ]
     parts.append(("xl/styles.xml", _styles_part(styles)))

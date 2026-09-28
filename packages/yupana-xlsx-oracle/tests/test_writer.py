@@ -76,9 +76,10 @@ def test_the_writers_workbook_with_one_cell_written_twice_is_refused(
 def test_an_accounting_format_shows_as_the_app_shows_it(session: Session) -> None:
     code = "_(#,##0.0_);(#,##0.0);_(-_)"
     text = (
-        PREAMBLE + f"S\t1\t1\t#1234.5\tcolumnwidth=14|numberformat={code}\n"
-        f"S\t2\t1\t#-1234.5\tnumberformat={code}\n"
-        f"S\t3\t1\t#0\tnumberformat={code}\n"
+        PREAMBLE + "S\t*\t1\t|\t\tcolumnwidth=14\n"
+        f"S\t1\t1\t#\t1234.5\tnumberformat={code}\n"
+        f"S\t2\t1\t#\t-1234.5\tnumberformat={code}\n"
+        f"S\t3\t1\t#\t0\tnumberformat={code}\n"
     )
     path = TARGET / "accounting.xlsx"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -87,6 +88,45 @@ def test_an_accounting_format_shows_as_the_app_shows_it(session: Session) -> Non
     found = [workbook.Worksheets(1).Cells(row, 1).Text for row in (1, 2, 3)]
     workbook.Close(SaveChanges=False)
     assert found == [" 1,234.5 ", "(1,234.5)", " - "]
+
+
+@pytest.mark.app
+def test_the_app_sizes_columns_and_rows_as_the_writer_says(session: Session) -> None:
+    path = TARGET / "sizes-read-back.xlsx"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_xlsx_file(read_yup(fixture("sizes")).unwrap(), path).unwrap()
+    workbook = session.app.Workbooks.Open(str(path), UpdateLinks=0, ReadOnly=True)
+    sizes, only = workbook.Worksheets(1), workbook.Worksheets(2)
+    found = {
+        "every column": sizes.StandardWidth,
+        "column A": sizes.Columns(1).ColumnWidth,
+        "column C hidden": sizes.Columns(3).Hidden,
+        "column E": sizes.Columns(5).ColumnWidth,
+        "every row": sizes.StandardHeight,
+        "row 1": sizes.Rows(1).RowHeight,
+        "row 3": sizes.Rows(3).RowHeight,
+        "row 5 hidden": sizes.Rows(5).Hidden,
+        "row 7": sizes.Rows(7).RowHeight,
+        "row 100": sizes.Rows(100).RowHeight,
+        "other sheet, column B": only.Columns(2).ColumnWidth,
+        "other sheet, row 2": only.Rows(2).RowHeight,
+    }
+    workbook.Close(SaveChanges=False)
+    # 4.5 characters is not a whole number of pixels, so the app shows the nearest.
+    assert found == {
+        "every column": 12.0,
+        "column A": 30.0,
+        "column C hidden": True,
+        "column E": 12.0,
+        "every row": 18.0,
+        "row 1": 18.0,
+        "row 3": 6.0,
+        "row 5 hidden": True,
+        "row 7": 409.0,
+        "row 100": 18.0,
+        "other sheet, column B": pytest.approx(4.5, abs=1 / 7),
+        "other sheet, row 2": 30.0,
+    }
 
 
 @pytest.mark.app

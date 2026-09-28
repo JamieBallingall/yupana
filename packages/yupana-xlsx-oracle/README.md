@@ -12,7 +12,7 @@ yupana-xlsx-oracle read    model.xlsx model.yup [--values model.csv]
 yupana-xlsx-oracle compare model.yup  expected.csv [--xlsx model.xlsx] [--tolerance 1e-9]
 ```
 
-- **`build`**: write every cell of the `.yup` file into a fresh workbook in the app, recalculate in full, and write the values CSV. With `--xlsx`, also save the app's own workbook.
+- **`build`**: write every line of the `.yup` file into a fresh workbook in the app (each cell and its format, and the size of each column and row), recalculate in full, and write the values CSV. With `--xlsx`, also save the app's own workbook.
 - **`read`**: open an xlsx file in the app, recalculate in full, and write the values of the cells the `.yup` file lists. A file the app will not open is reported as refused.
 - **`compare`**: compute as `build` does (or as `read` does, given `--xlsx`), and compare with a values CSV, cell by cell, reporting every disagreement. Exact by default: type and value must be identical. With `--tolerance t`, numbers agree within `t`, and any error agrees with any error.
 
@@ -37,5 +37,7 @@ Established with this package on 2026-09-27, and checked again by its tests mark
 - A result that nearly cancels is snapped to zero: `=0.1+0.2-0.3` is exactly 0.
 - Negation binds more tightly than `^`: `=-2^2` is 4.
 - Its default font is Aptos Narrow 11, and it writes `defaultRowHeight="15"` for it.
+- It writes the width of every column as the sheet's `defaultColWidth`, padded as a single column's width is, and the height of every row as a `defaultRowHeight` marked `customHeight`. But a `<row>` without a height of its own is sized to fit its cells, whatever the default, so it writes the height on every row as well. (2026-09-28)
+- It hides a row whose height is set to 0, keeping its height to unhide to, and a column whose width is set to 0, keeping a width of 0. (2026-09-28)
 - It refuses a workbook with one cell written twice, and a number format mixing a date with digit placeholders in one section.
 - Its error numbers are 2000 `#NULL!`, 2007 `#DIV/0!`, 2015 `#VALUE!`, 2023 `#REF!`, 2029 `#NAME?`, 2036 `#NUM!`, 2042 `#N/A`, 2045 `#SPILL!` and 2050 `#CALC!`.

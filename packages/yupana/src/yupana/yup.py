@@ -2,9 +2,11 @@
 
 >>> text = (
 ...     PREAMBLE
-...     + "Model\\t1\\t1\\t$Revenue\\tcolumnwidth=20\\n"
-...     "Model\\t1\\t2\\t#1000\\tcolumnwidth=default|numberformat=#,##0\\n"
-...     "Model\\t2\\t2\\t=B1*2\\t\\n"
+...     + "Model\\t*\\t1\\t|\\t\\tcolumnwidth=20\\n"
+...     "Model\\t1\\t1\\t$\\tRevenue\\t\\n"
+...     "Model\\t1\\t2\\t#\\t1000\\tnumberformat=#,##0\\n"
+...     "Model\\t2\\t2\\t=\\tB1*2\\t\\n"
+...     "Model\\t3\\t2\\t.\\t\\tindent=1\\n"
 ... )
 >>> yup = read_yup(text).unwrap()
 >>> yup.sheets
@@ -12,51 +14,65 @@
 >>> [cell.content for cell in yup.cells]
 [Text(value='Revenue'), Number(value=1000.0), Formula(text='=B1*2')]
 >>> yup.cells[1].format
-Format(number_format='#,##0', indent=None, column_width=Default())
+Format(number_format='#,##0', indent=None)
+>>> yup.columns, yup.blanks[0].format
+((Column(line=3, sheet='Model', col=1, width=20.0),), Format(number_format=None, indent=1))
 
 A file with problems is refused with every one of them, each with its line:
 
->>> broken = text.replace("#1000", "#01").replace("\\t2\\t2\\t", "\\t0\\t2\\t")
+>>> broken = text.replace("\\t1000", "\\t01").replace("\\t2\\t2\\t", "\\t0\\t2\\t")
 >>> for error in read_yup(broken).unwrap_err():
 ...     print(error)
-line 4: a number is written in JSON's grammar, not "01"
-line 5: row must be a whole number from 1 to 1048576, not "0"
+line 5: a number is written in JSON's grammar, not "01"
+line 6: row must be a whole number from 1 to 1048576, not "0"
 """
 
 import json
 import math
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
 from yupana.result import Err, Ok, Result
 
-VERSION = "0.0.1"
+VERSION = "0.0.2"
 # The first line names the format and its version, so that a file says what it is, and a
 # reader of a later version can tell which rules a file was written to.
 VERSION_LINE = f"yup {VERSION} Yupana Straight Line Spreadsheet Format"
-HEADER = "sheet\trow\tcol\tcell\tformat"
+HEADER = "sheet\trow\tcol\ttype\tcell\tformat"
 PREAMBLE = f"{VERSION_LINE}\n{HEADER}\n"
 """The two lines every ``.yup`` file starts with, for a writer to begin with."""
+EVERY = "*"
+"""What ``row`` or ``col`` holds for every row or column, where the type allows it."""
 MAX_ROW = 1_048_576
 MAX_COL = 16_384
 MAX_SHEET_NAME = 31
 MAX_TEXT = 32_767
 MAX_FORMULA = 8_192
+"""The app's limit on a formula's length, counting its ``=``."""
 MAX_INDENT = 250
-MAX_COLUMN_WIDTH = 255.0
+MAX_COLUMN_WIDTH = 255
+MAX_ROW_HEIGHT = 409
 SMALLEST_NORMAL = 2.2250738585072014e-308
 
 _INTEGER = re.compile(r"[1-9][0-9]*")
 JSON_NUMBER = re.compile(r"-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?")
 ESCAPE_SHAPE = re.compile(r"_x[0-9A-Fa-f]{4}_")
 _NOT_IN_SHEET_NAME = ":\\/?*[]"
-_KEYS = ("numberformat", "indent", "columnwidth")
+_CELL_TYPES = ("=", "#", "$", "?", ".")
+_TYPES = (*_CELL_TYPES, "|", "-")
+_CELL_KEYS = ("numberformat", "indent")
+_KEYS = {"|": ("columnwidth",), "-": ("rowheight",)}
+_HOME = {key: "a cell" for key in _CELL_KEYS} | {
+    key: f"a {kind} line" for kind, keys in _KEYS.items() for key in keys
+}
+"""Every format key, and the type of line it is for."""
 
 
 @dataclass(frozen=True, slots=True)
 class Formula:
-    """A formula as it is typed into a cell, so its text starts with ``=``."""
+    """A formula as it is typed into a cell, so its text starts with ``=``. A ``.yup``
+    file writes it without, since its type already says it is a formula."""
 
     text: str
 
@@ -80,22 +96,17 @@ type Content = Formula | Number | Text | Logical
 
 
 @dataclass(frozen=True, slots=True)
-class Default:
-    """The spreadsheet app's standard column width."""
-
-
-@dataclass(frozen=True, slots=True)
 class Format:
     """A cell's formats. ``None`` means the key is absent."""
 
     number_format: str | None = None
     indent: int | None = None
-    column_width: float | Default | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class Cell:
-    """One line of a ``.yup`` file. ``line`` is its 1-based line number in the file."""
+    """A cell with contents: a line of type ``=``, ``#``, ``$`` or ``?``. ``line`` is its
+    1-based line number in the file."""
 
     line: int
     sheet: str
@@ -106,11 +117,58 @@ class Cell:
 
 
 @dataclass(frozen=True, slots=True)
+class Blank:
+    """A blank cell, listed for its format: a line of type ``.``."""
+
+    line: int
+    sheet: str
+    row: int
+    col: int
+    format: Format
+
+
+@dataclass(frozen=True, slots=True)
+class Column:
+    """A column's width: a line of type ``|``. ``col`` is ``None`` for every column."""
+
+    line: int
+    sheet: str
+    col: int | None
+    width: float
+
+
+@dataclass(frozen=True, slots=True)
+class Row:
+    """A row's height: a line of type ``-``. ``row`` is ``None`` for every row."""
+
+    line: int
+    sheet: str
+    row: int | None
+    height: float
+
+
+type Line = Cell | Blank | Column | Row
+
+
+@dataclass(frozen=True, slots=True)
 class Yup:
-    """A checked ``.yup`` file: its sheets in order of first appearance, and its cells."""
+    """A checked ``.yup`` file.
+
+    Its sheets, in order of first appearance; its cells with contents, in file order, one
+    for each line of the values CSV; and the lines that only format: blank cells,
+    columns and rows, each in file order.
+    """
 
     sheets: tuple[str, ...]
     cells: tuple[Cell, ...]
+    blanks: tuple[Blank, ...] = ()
+    columns: tuple[Column, ...] = ()
+    rows: tuple[Row, ...] = ()
+
+    def lines(self) -> tuple[Line, ...]:
+        """Every line after the header, in file order."""
+        every = (*self.cells, *self.blanks, *self.columns, *self.rows)
+        return tuple(sorted(every, key=lambda line: line.line))
 
 
 @dataclass(frozen=True, slots=True)
@@ -197,6 +255,26 @@ def position(field: str, text: str, largest: int) -> Result[int, str]:
     )
 
 
+def _position_or_every(field: str, text: str, largest: int) -> Result[int | None, str]:
+    """A row or col, or ``None`` for every one (``*``)."""
+    if text == EVERY:
+        return Ok(None)
+    match position(field, text, largest):
+        case Ok(value):
+            return Ok(value)
+        case Err():
+            return Err(
+                f"{field} must be * or a whole number from 1 to {largest}, "
+                f"not {quoted(text)}"
+            )
+
+
+def _every(field: str, text: str, kind: str) -> Result[None, str]:
+    if text == EVERY:
+        return Ok(None)
+    return Err(f"{field} is * on a {kind} line, not {quoted(text)}")
+
+
 def _number(text: str) -> Result[float, str]:
     if not JSON_NUMBER.fullmatch(text):
         return Err(f"a number is written in JSON's grammar, not {quoted(text)}")
@@ -211,43 +289,48 @@ def _number(text: str) -> Result[float, str]:
     return Ok(value)
 
 
-def _content(cell: str) -> Result[Content, str]:
-    kind, rest = cell[:1], cell[1:]
+def _content(kind: str, cell: str) -> Result[Content, str]:
+    """A cell's contents, read as its type says."""
     match kind:
         case "=":
-            if not rest:
-                return Err("a formula needs something after the =")
-            if bad := bad_character(rest):
+            if not cell:
+                return Err("a formula cannot be empty")
+            if bad := bad_character(cell):
                 return Err(f"a formula cannot contain the character {bad}")
-            if (length := utf16_length(cell)) > MAX_FORMULA:
+            if (length := utf16_length(cell)) >= MAX_FORMULA:
                 return Err(
-                    f"a formula is at most {MAX_FORMULA} characters long, not {length}"
+                    f"a formula is at most {MAX_FORMULA - 1} characters long, "
+                    f"not {length}"
                 )
-            return Ok(Formula(cell))
+            return Ok(Formula("=" + cell))
         case "#":
-            match _number(rest):
+            match _number(cell):
                 case Ok(value):
                     return Ok(Number(value))
                 case Err() as refused:
                     return refused
         case "$":
-            if not rest:
-                return Err("a text cannot be empty: a blank cell is not listed")
-            if (length := utf16_length(rest)) > MAX_TEXT:
+            if not cell:
+                return Err("a text cannot be empty")
+            if (length := utf16_length(cell)) > MAX_TEXT:
                 return Err(
                     f"a text is at most {MAX_TEXT} characters long, not {length}"
                 )
-            if bad := bad_character(rest):
+            if bad := bad_character(cell):
                 return Err(f"a text cannot contain the character {bad}")
-            return Ok(Text(rest))
+            return Ok(Text(cell))
         case "?":
-            if rest in ("TRUE", "FALSE"):
-                return Ok(Logical(rest == "TRUE"))
-            return Err(f"a logical is TRUE or FALSE, not {quoted(rest)}")
-        case "":
-            return Err("the cell is empty: a blank cell is not listed")
+            if cell in ("TRUE", "FALSE"):
+                return Ok(Logical(cell == "TRUE"))
+            return Err(f"a logical is TRUE or FALSE, not {quoted(cell)}")
         case _:
-            return Err(f"a cell starts with =, #, $ or ?, not {quoted(kind)}")
+            raise AssertionError(f"no contents for a {kind} line")
+
+
+def _number_format(text: str) -> Result[str, str]:
+    if bad := bad_character(text):
+        return Err(f"a number format cannot contain the character {bad}")
+    return Ok(text)
 
 
 def _indent(text: str) -> Result[int, str]:
@@ -260,75 +343,79 @@ def _indent(text: str) -> Result[int, str]:
     )
 
 
-def _column_width(text: str) -> Result[float | Default, str]:
-    if text == "default":
-        return Ok(Default())
-    if JSON_NUMBER.fullmatch(text) and 0 <= (width := float(text)) <= MAX_COLUMN_WIDTH:
-        return Ok(width + 0.0)
-    return Err(
-        f"columnwidth must be default or a number from 0 to 255, not {quoted(text)}"
-    )
+def _size(key: str, text: str, largest: int) -> Result[float, str]:
+    """A width or height: a number from 0 to ``largest``, in JSON's grammar."""
+    if JSON_NUMBER.fullmatch(text) and 0 <= (size := float(text)) <= largest:
+        return Ok(size + 0.0)
+    return Err(f"{key} must be a number from 0 to {largest}, not {quoted(text)}")
 
 
-def _format(text: str) -> Result[Format, tuple[str, ...]]:
-    if not text:
-        return Ok(Format())
-    problems: list[str] = []
+def _pairs(text: str, kind: str) -> tuple[dict[str, str], list[str]]:
+    """A format's values by key, and every problem with its shape or its keys."""
+    allowed = _CELL_KEYS if kind in _CELL_TYPES else _KEYS[kind]
     pairs: dict[str, str] = {}
+    problems: list[str] = []
+    if not text:
+        return pairs, problems
     for pair in text.split("|"):
         key, equals, value = pair.partition("=")
         if not equals or not value:
             problems.append(f"a format pair is key=value, not {quoted(pair)}")
-        elif key not in _KEYS:
+        elif key not in _HOME:
             problems.append(f"unknown format key {quoted(key)}")
+        elif key not in allowed:
+            problems.append(
+                f"the format key {key} is for {_HOME[key]}, not a {kind} line"
+            )
         elif key in pairs:
             problems.append(f"the format key {key} appears twice")
         else:
             pairs[key] = value
-    number_format = pairs.get("numberformat")
-    if number_format is not None and (bad := bad_character(number_format)):
-        problems.append(f"a number format cannot contain the character {bad}")
-    indent = pairs.get("indent")
-    width = pairs.get("columnwidth")
-    parsed_indent = None if indent is None else _indent(indent)
-    parsed_width = None if width is None else _column_width(width)
-    for result in (parsed_indent, parsed_width):
-        if isinstance(result, Err):
-            problems.append(result.error)
+    return pairs, problems
+
+
+def _cell_format(pairs: dict[str, str]) -> Result[Format, list[str]]:
+    """A cell's formats, or every problem with their values."""
+    problems: list[str] = []
+
+    def parsed[T](key: str, parse: Callable[[str], Result[T, str]]) -> T | None:
+        text = pairs.get(key)
+        if text is None:
+            return None
+        match parse(text):
+            case Ok(value):
+                return value
+            case Err(problem):
+                problems.append(problem)
+                return None
+
+    number_format = parsed("numberformat", _number_format)
+    indent = parsed("indent", _indent)
     if problems:
-        return Err(tuple(problems))
-    return Ok(
-        Format(
-            number_format=number_format,
-            indent=None if parsed_indent is None else parsed_indent.unwrap(),
-            column_width=None if parsed_width is None else parsed_width.unwrap(),
-        )
-    )
-
-
-def _has_column_width(format_text: str) -> bool:
-    return any(
-        pair.partition("=")[0] == "columnwidth" for pair in format_text.split("|")
-    )
+        return Err(problems)
+    return Ok(Format(number_format=number_format, indent=indent))
 
 
 @dataclass(frozen=True, slots=True)
 class _Placed:
-    """Where a line puts its cell, as far as it could be read, for the rules across lines."""
+    """What a line names, as far as it could be read, for the rules across lines.
+
+    ``kind`` is ``cell``, ``width`` or ``height``, and ``slot`` which one of those on the
+    sheet the line names, such as ``row 2, col 3``, or ``None`` if it could not be read.
+    """
 
     line: int
     sheet: str
-    row: int | None
-    col: int | None
-    has_column_width: bool
+    kind: str
+    slot: str | None
 
 
 def _across_lines(placed: Iterable[_Placed]) -> list[YupError]:
-    """The rules that no single line can break: spelling, duplicates and column widths."""
+    """The rules that no single line can break: spelling, and one line per cell, column
+    and row."""
     errors: list[YupError] = []
     spelling: dict[str, str] = {}
-    first_line: dict[tuple[str, int, int], int] = {}
-    columns: set[tuple[str, int]] = set()
+    first_line: dict[tuple[str, str, str], int] = {}
     for p in placed:
         key = p.sheet.casefold()
         first = spelling.setdefault(key, p.sheet)
@@ -339,36 +426,104 @@ def _across_lines(placed: Iterable[_Placed]) -> list[YupError]:
                     f"sheet {quoted(p.sheet)} is spelled {quoted(first)} earlier",
                 )
             )
-        if p.row is None or p.col is None:
+        if p.slot is None:
             continue
-        where = f"sheet {quoted(first)}, row {p.row}, col {p.col}"
-        cell = (key, p.row, p.col)
-        if cell in first_line:
-            errors.append(
-                YupError(p.line, f"{where} is already on line {first_line[cell]}")
-            )
-        else:
-            first_line[cell] = p.line
-        column = (key, p.col)
-        if column not in columns:
-            columns.add(column)
-            if not p.has_column_width:
-                errors.append(
-                    YupError(
-                        p.line,
-                        f"the first line for sheet {quoted(first)}, col {p.col}, "
-                        "must carry columnwidth",
-                    )
-                )
-        elif p.has_column_width:
-            errors.append(
-                YupError(
-                    p.line,
-                    f"only the first line for sheet {quoted(first)}, col {p.col}, "
-                    "may carry columnwidth",
-                )
-            )
+        named = (key, p.kind, p.slot)
+        if named not in first_line:
+            first_line[named] = p.line
+            continue
+        where = f"sheet {quoted(first)}, {p.slot}"
+        earlier = first_line[named]
+        message = (
+            f"{where} is already on line {earlier}"
+            if p.kind == "cell"
+            else f"the {p.kind} of {where}, is already on line {earlier}"
+        )
+        errors.append(YupError(p.line, message))
     return errors
+
+
+def _line(number: int, fields: list[str]) -> tuple[Line | None, list[str], _Placed]:
+    """One line after the header: what it describes, if it is good; every problem with
+    it; and what it names, for the rules across lines."""
+    sheet, row_text, col_text, kind, cell_text, format_text = fields
+    problems = [*sheet_name_problems(sheet)]
+
+    def read[T](result: Result[T, str]) -> T | None:
+        match result:
+            case Ok(value):
+                return value
+            case Err(problem):
+                problems.append(problem)
+                return None
+
+    def empty_cell() -> None:
+        if cell_text:
+            problems.append(
+                f"the cell field of a {kind} line is empty, not {quoted(cell_text)}"
+            )
+
+    if kind not in _TYPES:
+        problems.append(f"type is one of {' '.join(_TYPES)}, not {quoted(kind)}")
+        return None, problems, _Placed(number, sheet, "cell", None)
+
+    if kind in _CELL_TYPES:
+        row = read(position("row", row_text, MAX_ROW))
+        col = read(position("col", col_text, MAX_COL))
+        content = None
+        if kind == ".":
+            empty_cell()
+            if not format_text:
+                problems.append(
+                    "a . line needs a format: a blank cell without one is not listed"
+                )
+        else:
+            content = read(_content(kind, cell_text))
+        pairs, format_problems = _pairs(format_text, kind)
+        problems += format_problems
+        cell_format = None
+        match _cell_format(pairs):
+            case Ok(read_format):
+                cell_format = read_format
+            case Err(value_problems):
+                problems += value_problems
+        slot = None if row is None or col is None else f"row {row}, col {col}"
+        placed = _Placed(number, sheet, "cell", slot)
+        if problems or row is None or col is None or cell_format is None:
+            return None, problems, placed
+        if content is None:
+            return Blank(number, sheet, row, col, cell_format), problems, placed
+        return Cell(number, sheet, row, col, content, cell_format), problems, placed
+
+    # A column or a row: one of row and col says which, and the other is *.
+    column = kind == "|"
+    if column:
+        read(_every("row", row_text, kind))
+        at = read(_position_or_every("col", col_text, MAX_COL))
+        readable = col_text == EVERY or at is not None
+        what, key, largest = "col", "columnwidth", MAX_COLUMN_WIDTH
+    else:
+        at = read(_position_or_every("row", row_text, MAX_ROW))
+        read(_every("col", col_text, kind))
+        readable = row_text == EVERY or at is not None
+        what, key, largest = "row", "rowheight", MAX_ROW_HEIGHT
+    empty_cell()
+    pairs, format_problems = _pairs(format_text, kind)
+    problems += format_problems
+    size = None
+    if key in pairs:
+        size = read(_size(key, pairs[key], largest))
+        if size == 0 and at is None and readable:
+            problems.append(f"{key} cannot be 0 for every {what}")
+    elif not format_problems:
+        problems.append(f"a {kind} line needs {key}")
+    slot = (f"every {what}" if at is None else f"{what} {at}") if readable else None
+    placed = _Placed(number, sheet, "width" if column else "height", slot)
+    if problems or size is None:
+        return None, problems, placed
+    if column:
+        return Column(number, sheet, at, size), problems, placed
+    return Row(number, sheet, at, size), problems, placed
 
 
 def _not_the_version_line(line: str) -> str:
@@ -381,7 +536,7 @@ def _not_the_version_line(line: str) -> str:
 
 
 def read_yup(text: str) -> Result[Yup, tuple[YupError, ...]]:
-    """A ``.yup`` file's cells, checked, or every problem with it, each with its line.
+    """A ``.yup`` file's lines, checked, or every problem with it, each with its line.
 
     Reading the file from disk is the caller's business, and so is decoding it as UTF-8.
     """
@@ -409,48 +564,36 @@ def read_yup(text: str) -> Result[Yup, tuple[YupError, ...]]:
             YupError(2, f"the second line must be the header {quoted(HEADER)}")
         )
     if len(lines) < 3:
-        errors.append(YupError(len(lines), "there are no cells"))
+        errors.append(YupError(len(lines), "there is no line after the header"))
 
-    cells: list[Cell] = []
+    read: list[Line] = []
     placed: list[_Placed] = []
     for number, line in enumerate(lines[2:], start=3):
         if not line:
             errors.append(YupError(number, "an empty line"))
             continue
         fields = line.split("\t")
-        if len(fields) != 5:
+        if len(fields) != 6:
             errors.append(
                 YupError(
-                    number, f"a line has 5 tab-separated fields, not {len(fields)}"
+                    number, f"a line has 6 tab-separated fields, not {len(fields)}"
                 )
             )
             continue
-        sheet, row_text, col_text, cell_text, format_text = fields
-        sheet_problems = sheet_name_problems(sheet)
-        row = position("row", row_text, MAX_ROW)
-        col = position("col", col_text, MAX_COL)
-        content = _content(cell_text)
-        cell_format = _format(format_text)
-        problems = [*sheet_problems]
-        for result in (row, col, content):
-            if isinstance(result, Err):
-                problems.append(result.error)
-        if isinstance(cell_format, Err):
-            problems.extend(cell_format.error)
+        good, problems, named = _line(number, fields)
         errors.extend(YupError(number, problem) for problem in problems)
-        placed.append(
-            _Placed(
-                number,
-                sheet,
-                row.value if isinstance(row, Ok) else None,
-                col.value if isinstance(col, Ok) else None,
-                _has_column_width(format_text),
-            )
-        )
-        match (row, col, content, cell_format):
-            case (Ok(r), Ok(c), Ok(k), Ok(f)) if not sheet_problems:
-                cells.append(Cell(number, sheet, r, c, k, f))
+        placed.append(named)
+        if good is not None:
+            read.append(good)
     errors.extend(_across_lines(placed))
     if errors:
         return Err(tuple(sorted(errors, key=lambda error: error.line)))
-    return Ok(Yup(tuple(dict.fromkeys(c.sheet for c in cells)), tuple(cells)))
+    return Ok(
+        Yup(
+            sheets=tuple(dict.fromkeys(line.sheet for line in read)),
+            cells=tuple(line for line in read if isinstance(line, Cell)),
+            blanks=tuple(line for line in read if isinstance(line, Blank)),
+            columns=tuple(line for line in read if isinstance(line, Column)),
+            rows=tuple(line for line in read if isinstance(line, Row)),
+        )
+    )

@@ -10,7 +10,7 @@ import pytest
 from yupana.cli import main
 from yupana.yup import PREAMBLE
 
-GOOD = f"{PREAMBLE}Model\t1\t1\t$Year\tcolumnwidth=10\n"
+GOOD = f"{PREAMBLE}Model\t1\t1\t$\tYear\tindent=1\n"
 
 
 def run(*argv: str) -> tuple[int, str, str]:
@@ -31,7 +31,7 @@ def test_check_reports_a_good_file(tmp_path: Path) -> None:
 
 
 def test_check_reports_every_problem(tmp_path: Path) -> None:
-    path = written(tmp_path, GOOD + "Model\t0\t1\t#01\t\n")
+    path = written(tmp_path, GOOD + "Model\t0\t1\t#\t01\t\n")
     status, _, err = run("check", str(path))
     assert status == 1
     assert err.splitlines() == [
@@ -55,9 +55,7 @@ def test_xlsx_writes_a_workbook(tmp_path: Path) -> None:
 
 
 def test_xlsx_reports_every_refused_cell_and_writes_nothing(tmp_path: Path) -> None:
-    source = written(
-        tmp_path, GOOD.replace("columnwidth=10", "columnwidth=10|numberformat=0x")
-    )
+    source = written(tmp_path, GOOD.replace("indent=1", "indent=1|numberformat=0x"))
     target = tmp_path / "model.xlsx"
     status, _, err = run("xlsx", str(source), str(target))
     assert status == 1

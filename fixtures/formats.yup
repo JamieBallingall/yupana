@@ -1,32 +1,40 @@
-yup 0.0.1 Yupana Straight Line Spreadsheet Format
-sheet	row	col	cell	format
-Formats	1	1	$Label	columnwidth=34|indent=0
-Formats	2	1	$Indented once	indent=1
-Formats	3	1	$Indented five	indent=5
-Formats	4	1	$Indented most	indent=250
-Formats	1	2	#1234.5678	columnwidth=12.5|numberformat=General
-Formats	2	2	#1234.5678	numberformat=0
-Formats	3	2	#1234.5678	numberformat=0.00
-Formats	4	2	#1234.5678	numberformat=#,##0
-Formats	5	2	#0.1234	numberformat=0%
-Formats	6	2	#0.1234	numberformat=0.0%
-Formats	7	2	#-1234.5678	numberformat=#,##0.0;(#,##0.0)
-Formats	8	2	#1234.5678	numberformat=0.00E+00
-Formats	9	2	#-1234.5678	numberformat=#,##0_);(#,##0)
-Formats	10	2	#-1234.5678	numberformat=#,##0.00_);[Red](#,##0.00)
-Formats	11	2	#1234.5678	numberformat="$"#,##0.00
-Formats	12	2	#12.5	numberformat=0.0" kg"
-Formats	13	2	#46023	numberformat=yyyy-mm-dd
-Formats	14	2	#46023.5	numberformat=d-mmm-yy
-Formats	15	2	#-5	numberformat=[Red]0.0;[Blue]-0.0
-Formats	16	2	#150	numberformat=[>=100]0;0.00
-Formats	17	2	$text	numberformat=@
-Formats	18	2	=B2+B3	numberformat=#,##0.0;(#,##0.0)|indent=2
-Formats	1	3	$Hidden	columnwidth=0
-Formats	1	4	$Default	columnwidth=default
-Formats	1	5	$Half	columnwidth=0.5
-Formats	1	6	$One	columnwidth=1
-Formats	1	7	$Widest	columnwidth=255
-Formats	1	8	$Same as next	columnwidth=10
-Formats	1	9	$Same as last	columnwidth=10
-Formats	19	2	#5	numberformat=0" _x0041_"
+yup 0.0.2 Yupana Straight Line Spreadsheet Format
+sheet	row	col	type	cell	format
+Formats	*	1	|		columnwidth=34
+Formats	1	1	$	Label	indent=0
+Formats	2	1	$	Indented once	indent=1
+Formats	3	1	$	Indented five	indent=5
+Formats	4	1	$	Indented most	indent=250
+Formats	*	2	|		columnwidth=12.5
+Formats	1	2	#	1234.5678	numberformat=General
+Formats	2	2	#	1234.5678	numberformat=0
+Formats	3	2	#	1234.5678	numberformat=0.00
+Formats	4	2	#	1234.5678	numberformat=#,##0
+Formats	5	2	#	0.1234	numberformat=0%
+Formats	6	2	#	0.1234	numberformat=0.0%
+Formats	7	2	#	-1234.5678	numberformat=#,##0.0;(#,##0.0)
+Formats	8	2	#	1234.5678	numberformat=0.00E+00
+Formats	9	2	#	-1234.5678	numberformat=#,##0_);(#,##0)
+Formats	10	2	#	-1234.5678	numberformat=#,##0.00_);[Red](#,##0.00)
+Formats	11	2	#	1234.5678	numberformat="$"#,##0.00
+Formats	12	2	#	12.5	numberformat=0.0" kg"
+Formats	13	2	#	46023	numberformat=yyyy-mm-dd
+Formats	14	2	#	46023.5	numberformat=d-mmm-yy
+Formats	15	2	#	-5	numberformat=[Red]0.0;[Blue]-0.0
+Formats	16	2	#	150	numberformat=[>=100]0;0.00
+Formats	17	2	$	text	numberformat=@
+Formats	18	2	=	B2+B3	numberformat=#,##0.0;(#,##0.0)|indent=2
+Formats	*	3	|		columnwidth=0
+Formats	1	3	$	Hidden	
+Formats	1	4	$	Default	
+Formats	*	5	|		columnwidth=0.5
+Formats	1	5	$	Half	
+Formats	*	6	|		columnwidth=1
+Formats	1	6	$	One	
+Formats	*	7	|		columnwidth=255
+Formats	1	7	$	Widest	
+Formats	*	8	|		columnwidth=10
+Formats	1	8	$	Same as next	
+Formats	*	9	|		columnwidth=10
+Formats	1	9	$	Same as last	
+Formats	19	2	#	5	numberformat=0" _x0041_"

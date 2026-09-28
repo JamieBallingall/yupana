@@ -81,7 +81,7 @@ def test_every_disagreement_is_reported() -> None:
     assert [d.row for d in compare(got, want)] == [2, 3]
 
 
-YUP = read_yup(f"{PREAMBLE}S\t1\t1\t#1\tcolumnwidth=default\nS\t2\t1\t#2\t\n").unwrap()
+YUP = read_yup(f"{PREAMBLE}S\t1\t1\t#\t1\t\nS\t2\t1\t#\t2\t\n").unwrap()
 
 
 def test_values_that_line_up_are_not_misaligned() -> None:

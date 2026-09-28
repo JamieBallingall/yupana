@@ -35,15 +35,15 @@ def values_of(session: Session, text: str) -> list[tuple[int, str]]:
 @pytest.mark.app
 def test_numbers_logicals_and_formulas(session: Session) -> None:
     text = yup(
-        "Model\t1\t1\t#2.5\tcolumnwidth=default",
-        "Model\t2\t1\t#-0\t",
-        "Model\t3\t1\t#1e-300\t",
-        "Model\t4\t1\t?TRUE\t",
-        "Model\t5\t1\t?FALSE\t",
-        "Model\t6\t1\t=A1*4\t",
-        "Model\t7\t1\t=0.1+0.2\t",
-        "Model\t8\t1\t=AND(A4,A5)\t",
-        "Model\t9\t1\t=SUM(A1:A3)+MIN(A1,A6)+MAX(A1,A6)\t",
+        "Model\t1\t1\t#\t2.5\t",
+        "Model\t2\t1\t#\t-0\t",
+        "Model\t3\t1\t#\t1e-300\t",
+        "Model\t4\t1\t?\tTRUE\t",
+        "Model\t5\t1\t?\tFALSE\t",
+        "Model\t6\t1\t=\tA1*4\t",
+        "Model\t7\t1\t=\t0.1+0.2\t",
+        "Model\t8\t1\t=\tAND(A4,A5)\t",
+        "Model\t9\t1\t=\tSUM(A1:A3)+MIN(A1,A6)+MAX(A1,A6)\t",
     )
     assert values_of(session, text) == [
         (1, "2.5"),
@@ -67,15 +67,14 @@ AWKWARD = [
 
 @pytest.mark.app
 def test_every_awkward_text_is_kept_exactly(session: Session) -> None:
-    lines = [f"Model\t{r}\t1\t${t}\t" for r, t in enumerate(AWKWARD, start=1)]
-    lines[0] += "columnwidth=default"
+    lines = [f"Model\t{r}\t1\t$\t{t}\t" for r, t in enumerate(AWKWARD, start=1)]
     assert values_of(session, yup(*lines)) == [(2, t) for t in AWKWARD]
 
 
 @pytest.mark.app
 def test_a_text_the_app_cannot_hold_is_rejected_not_truncated(session: Session) -> None:
     long = "'" + "c" * 32766
-    text = yup("Model\t1\t1\t#1\tcolumnwidth=default", f"Model\t2\t1\t${long}\t")
+    text = yup("Model\t1\t1\t#\t1\t", f"Model\t2\t1\t$\t{long}\t")
     [rejected] = build(session, read_yup(text).unwrap()).unwrap_err()
     assert isinstance(rejected, Rejected)
     assert (rejected.line, rejected.row) == (4, 2)
@@ -93,17 +92,18 @@ def test_every_error_reads_back_as_the_app_shows_it(session: Session) -> None:
         ("=SQRT(-1)", "#NUM!"),
         ("=NA()", "#N/A"),
     ]
-    lines = [f"Model\t{r}\t3\t{f}\t" for r, (f, _) in enumerate(formulas, start=1)]
-    lines[0] += "columnwidth=default"
+    lines = [
+        f"Model\t{r}\t3\t=\t{f[1:]}\t" for r, (f, _) in enumerate(formulas, start=1)
+    ]
     assert values_of(session, yup(*lines)) == [(16, e) for _, e in formulas]
 
 
 @pytest.mark.app
 def test_sheets_are_named_and_ordered_and_refer_to_each_other(session: Session) -> None:
     text = yup(
-        "Inputs\t1\t1\t#40\tcolumnwidth=default",
-        "My Model\t1\t1\t=Inputs!A1+2\tcolumnwidth=default",
-        "It's\t1\t1\t='My Model'!A1/2\tcolumnwidth=default",
+        "Inputs\t1\t1\t#\t40\t",
+        "My Model\t1\t1\t=\tInputs!A1+2\t",
+        "It's\t1\t1\t=\t'My Model'!A1/2\t",
     )
     path = TARGET / "sheets.xlsx"
     assert build(session, read_yup(text).unwrap(), path) == Ok(
@@ -126,10 +126,14 @@ def test_sheets_are_named_and_ordered_and_refer_to_each_other(session: Session) 
 @pytest.mark.app
 def test_formats_are_applied_and_saved_with_the_workbook(session: Session) -> None:
     text = yup(
-        "Model\t1\t1\t$Label\tcolumnwidth=20|indent=2",
-        "Model\t1\t2\t#1234.5\tcolumnwidth=10|numberformat=#,##0.0;(#,##0.0)",
-        "Model\t1\t3\t$001\tcolumnwidth=0|numberformat=0.0%",
-        "Model\t1\t4\t#1\tcolumnwidth=default",
+        "Model\t1\t1\t$\tLabel\tindent=2",
+        "Model\t1\t2\t#\t1234.5\tnumberformat=#,##0.0;(#,##0.0)",
+        "Model\t1\t3\t$\t001\tnumberformat=0.0%",
+        "Model\t1\t4\t#\t1\t",
+        "Model\t2\t2\t.\t\tnumberformat=0.00",
+        "Model\t*\t1\t|\t\tcolumnwidth=20",
+        "Model\t*\t2\t|\t\tcolumnwidth=10",
+        "Model\t*\t3\t|\t\tcolumnwidth=0",
     )
     path = TARGET / "formats.xlsx"
     computed = build(session, read_yup(text).unwrap(), path).unwrap()
@@ -139,6 +143,7 @@ def test_formats_are_applied_and_saved_with_the_workbook(session: Session) -> No
         sheet = archive.read("xl/worksheets/sheet1.xml").decode()
     assert 'formatCode="#,##0.0;\\(#,##0.0\\)"' in styles
     assert 'indent="2"' in styles
+    assert re.search(r'<c r="B2" s="\d+"/>', sheet), "the blank cell keeps its format"
     cols = re.findall(r"<col [^>]*>", sheet)
     assert any('min="1" max="1" width="20.7109375"' in c for c in cols)
     assert any('min="2" max="2" width="10.7109375"' in c for c in cols)
@@ -146,12 +151,32 @@ def test_formats_are_applied_and_saved_with_the_workbook(session: Session) -> No
 
 
 @pytest.mark.app
+def test_every_column_and_row_is_sized_before_single_ones(session: Session) -> None:
+    text = yup(
+        "Model\t*\t3\t|\t\tcolumnwidth=30",
+        "Model\t*\t*\t|\t\tcolumnwidth=12",
+        "Model\t5\t*\t-\t\trowheight=0",
+        "Model\t6\t*\t-\t\trowheight=6",
+        "Model\t*\t*\t-\t\trowheight=20",
+        "Model\t1\t1\t#\t1\t",
+    )
+    path = TARGET / "sizes.xlsx"
+    build(session, read_yup(text).unwrap(), path).unwrap()
+    with zipfile.ZipFile(path) as archive:
+        sheet = archive.read("xl/worksheets/sheet1.xml").decode()
+    assert re.search(r'<sheetFormatPr defaultColWidth="12.7109375" [^>]*"1"', sheet)
+    assert '<col min="3" max="3" width="30.7109375" customWidth="1"/>' in sheet
+    assert re.search(r'<row r="5" [^>]*hidden="1"', sheet)
+    assert re.search(r'<row r="6" [^>]*ht="6" customHeight="1"', sheet)
+
+
+@pytest.mark.app
 def test_a_number_format_the_app_rejects_is_an_error_on_that_cell(
     session: Session,
 ) -> None:
     text = yup(
-        "Model\t1\t1\t#1\tcolumnwidth=default|numberformat=0.00e+00",
-        "Model\t2\t1\t#2\tnumberformat=0.0",
+        "Model\t1\t1\t#\t1\tnumberformat=0.00e+00",
+        "Model\t2\t1\t#\t2\tnumberformat=0.0",
     )
     match build(session, read_yup(text).unwrap()):
         case Err((Rejected(line=3, row=1, col=1, message=message),)):
@@ -162,4 +187,4 @@ def test_a_number_format_the_app_rejects_is_an_error_on_that_cell(
 
 @pytest.mark.app
 def test_the_session_is_still_usable_after_a_rejection(session: Session) -> None:
-    assert values_of(session, yup("S\t1\t1\t=1+1\tcolumnwidth=default")) == [(1, "2.0")]
+    assert values_of(session, yup("S\t1\t1\t=\t1+1\t")) == [(1, "2.0")]

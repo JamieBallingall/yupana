@@ -1,8 +1,8 @@
 # yupana
 
-**A spreadsheet as text.** A `.yup` file lists the cells of a workbook, one per line: where each cell is, what is in it, and how it is formatted. `yupana` reads a `.yup` file, checks it against [the specification](SPEC.md), reporting every problem at once, and writes it as an xlsx workbook of live formulas.
+**A spreadsheet as text.** A `.yup` file lists the cells of a workbook, one per line: where each cell is, what is in it, and how it is formatted. Other lines size its columns and rows. `yupana` reads a `.yup` file, checks it against [the specification](SPEC.md), reporting every problem at once, and writes it as an xlsx workbook of live formulas.
 
-**Not stable yet.** The format is at version 0.0.1, and it, the API and the names may all change.
+**Not stable yet.** The format is at version 0.0.2, and it, the API and the names may all change.
 
 ## Why
 
@@ -13,15 +13,17 @@ A workbook built by a program is easiest to check, diff and review as text. A `.
 A line naming the format and its version, then tab-separated lines with a header. Here each `→`, with the spaces around it, stands for a tab, so that the columns line up for reading. The file itself, with real tabs, is [`packages/yupana/tests/examples/readme.yup`](packages/yupana/tests/examples/readme.yup):
 
 ```text
-yup 0.0.1 Yupana Straight Line Spreadsheet Format
-sheet → row → col → cell         → format
-Model →  1  →  1  → $Revenue     → columnwidth=20
-Model →  1  →  2  → #1000        → columnwidth=10|numberformat=#,##0.0
-Model →  2  →  1  → $Next year   → indent=1
-Model →  2  →  2  → =B1*(1+0.08) → numberformat=#,##0.0
+yup 0.0.2 Yupana Straight Line Spreadsheet Format
+sheet → row → col → type → cell        → format
+Model →  *  →  1  →  |   →             → columnwidth=20
+Model →  *  →  2  →  |   →             → columnwidth=10
+Model →  1  →  1  →  $   → Revenue     →
+Model →  1  →  2  →  #   → 1000        → numberformat=#,##0.0
+Model →  2  →  1  →  $   → Next year   → indent=1
+Model →  2  →  2  →  =   → B1*(1+0.08) → numberformat=#,##0.0
 ```
 
-A cell starts with `=` for a formula, `#` for a number, `$` for text, or `?` for `TRUE` or `FALSE`. The format holds a number format, an indent and a column width. [`SPEC.md`](SPEC.md) has every rule.
+The type says what a line is: `=` a formula, `#` a number, `$` a text, `?` `TRUE` or `FALSE`, and `.` a blank cell, listed only for its format. A cell's format holds its number format and indent. A `|` line sets a column's width and a `-` line a row's height, where `*` stands for every row or column. [`SPEC.md`](SPEC.md) has every rule.
 
 ## Use
 
@@ -44,7 +46,8 @@ Every expected failure is a value, a `Result` from `yupana.result`: `read_yup` r
 ## What the writer writes
 
 - Numbers, text, `TRUE` and `FALSE`, and formulas, on as many sheets as the file names.
-- Number formats, indents and column widths.
+- Number formats and indents, on cells with contents or on blank cells.
+- Column widths and row heights, for single columns and rows or for every one, and hidden columns and rows.
 - **Formula cells carry no cached value.** The spreadsheet app computes every formula when it opens the file, but a program that reads the file as data sees no value in them.
 - The same `.yup` file always gives the same bytes.
 

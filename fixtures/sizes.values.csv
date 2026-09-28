@@ -1,0 +1,12 @@
+sheet,row,col,type,value
+Sizes,1,1,2,Every column 12 wide and every row 18 high
+Sizes,2,1,2,Except column A at 30
+Sizes,4,1,2,Row 3 is 6 high and row 5 hidden
+Sizes,5,1,2,Hidden
+Sizes,5,2,1,5.0
+Sizes,6,1,2,Column C is hidden
+Sizes,6,3,1,3.0
+Sizes,7,1,2,The tallest row
+Sizes,8,1,2,B8 is blank but formatted
+Sizes,9,1,2,The sum of the two hidden numbers
+Sizes,9,2,1,8.0

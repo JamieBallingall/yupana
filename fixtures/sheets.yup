@@ -1,12 +1,12 @@
-yup 0.0.1 Yupana Straight Line Spreadsheet Format
-sheet	row	col	cell	format
-Inputs	1	1	$Rate	columnwidth=default
-Inputs	1	2	#0.05	columnwidth=default
-My Model	1	1	$Base	columnwidth=default
-My Model	1	2	#200	columnwidth=default
-My Model	2	2	=B1*(1+Inputs!B1)	
-It's here	1	1	='My Model'!B2*2	columnwidth=default
-It's here	2	1	=SUM('My Model'!B1:B2)	
-Inputs	2	2	='It''s here'!A1-Inputs!B1	
-_x0041_ data	1	1	#21	columnwidth=default
-Inputs	3	2	='_x0041_ data'!A1*2	
+yup 0.0.2 Yupana Straight Line Spreadsheet Format
+sheet	row	col	type	cell	format
+Inputs	1	1	$	Rate	
+Inputs	1	2	#	0.05	
+My Model	1	1	$	Base	
+My Model	1	2	#	200	
+My Model	2	2	=	B1*(1+Inputs!B1)	
+It's here	1	1	=	'My Model'!B2*2	
+It's here	2	1	=	SUM('My Model'!B1:B2)	
+Inputs	2	2	=	'It''s here'!A1-Inputs!B1	
+_x0041_ data	1	1	#	21	
+Inputs	3	2	=	'_x0041_ data'!A1*2	

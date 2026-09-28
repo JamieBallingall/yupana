@@ -69,9 +69,10 @@ def test_the_app_decodes_the_x_shape_everywhere_the_writer_escapes_it(
     session: Session, part: str, old: str, new: str, read: str, expected: str
 ) -> None:
     text = HEAD + (
-        "S\t1\t1\t$QQQQ\tcolumnwidth=20\n"
-        'S\t2\t1\t="QQQQ"&"b"\t\n'
-        'S\t3\t1\t#5\tnumberformat=0"QQQQ"\n'
+        "S\t*\t1\t|\t\tcolumnwidth=20\n"
+        "S\t1\t1\t$\tQQQQ\t\n"
+        'S\t2\t1\t=\t"QQQQ"&"b"\t\n'
+        'S\t3\t1\t#\t5\tnumberformat=0"QQQQ"\n'
     )
     workbook = opened(session, f"x-{read}.xlsx", edited(text, part, old, new))
     sheet = workbook.Worksheets(1)
@@ -99,10 +100,7 @@ def test_the_app_decodes_the_x_shape_everywhere_the_writer_escapes_it(
 def test_the_app_refuses_sheet_names_equal_under_case_folding(
     session: Session, first: str, second: str, opens: bool
 ) -> None:
-    text = (
-        HEAD
-        + "One\t1\t1\t#1\tcolumnwidth=default\nTwo\t1\t1\t#2\tcolumnwidth=default\n"
-    )
+    text = HEAD + "One\t1\t1\t#\t1\t\nTwo\t1\t1\t#\t2\t\n"
     data = edited(text, "xl/workbook.xml", 'name="One"', f'name="{first}"')
     source = zipfile.ZipFile(io.BytesIO(data))
     out = io.BytesIO()
@@ -121,7 +119,7 @@ def test_the_app_refuses_sheet_names_equal_under_case_folding(
 @pytest.mark.app
 def test_a_text_is_at_most_32767_utf16_units_in_a_file(session: Session) -> None:
     face = "\N{GRINNING FACE}"
-    text = HEAD + f"S\t1\t1\t${face * 16383}a\tcolumnwidth=default\n"
+    text = HEAD + f"S\t1\t1\t$\t{face * 16383}a\t\n"
     workbook = opened(session, "longest.xlsx", edited(text))
     assert workbook.Worksheets(1).Cells(1, 1).Value2 == face * 16383 + "a"
     workbook.Close(SaveChanges=False)
@@ -132,9 +130,7 @@ def test_a_text_is_at_most_32767_utf16_units_in_a_file(session: Session) -> None
 @pytest.mark.app
 def test_every_finite_double_is_kept_and_a_subnormal_is_not(session: Session) -> None:
     text = HEAD + (
-        "S\t1\t1\t#1.7976931348623157e308\tcolumnwidth=default\n"
-        "S\t2\t1\t=A1/2\t\n"
-        "S\t3\t1\t#1\t\n"
+        "S\t1\t1\t#\t1.7976931348623157e308\t\nS\t2\t1\t=\tA1/2\t\nS\t3\t1\t#\t1\t\n"
     )
     data = edited(text, "xl/worksheets/sheet1.xml", "<v>1.0</v>", "<v>5e-324</v>")
     workbook = opened(session, "doubles.xlsx", data)
@@ -148,7 +144,7 @@ def test_every_finite_double_is_kept_and_a_subnormal_is_not(session: Session) ->
 def test_a_number_inside_a_formula_keeps_15_significant_digits(
     session: Session,
 ) -> None:
-    text = HEAD + "S\t1\t1\t=0.3333333333333333*3\tcolumnwidth=default\n"
+    text = HEAD + "S\t1\t1\t=\t0.3333333333333333*3\t\n"
     workbook = opened(session, "digits.xlsx", edited(text))
     value = workbook.Worksheets(1).Cells(1, 1).Value2
     workbook.Close(SaveChanges=False)

@@ -21,11 +21,15 @@ from yupana.result import Err, Ok, Result
 from yupana.values import Value
 from yupana.yup import (
     MAX_TEXT,
+    Blank,
     Cell,
-    Default,
+    Column,
+    Content,
     Formula,
+    Line,
     Logical,
     Number,
+    Row,
     Text,
     Yup,
     utf16_length,
@@ -44,8 +48,14 @@ from yupana_xlsx_oracle.session import Session, com_error
 _XLSX = 51
 
 
-def _rejected(cell: Cell, message: str) -> Rejected:
-    return Rejected(cell.line, cell.sheet, cell.row, cell.col, message)
+def _rejected(line: Line, message: str) -> Rejected:
+    match line:
+        case Cell() | Blank():
+            return Rejected(line.line, line.sheet, line.row, line.col, message)
+        case Column():
+            return Rejected(line.line, line.sheet, None, line.col, message)
+        case Row():
+            return Rejected(line.line, line.sheet, line.row, None, message)
 
 
 def text_to_type(text: str) -> Result[str, str]:
@@ -66,8 +76,8 @@ def text_to_type(text: str) -> Result[str, str]:
     return Ok("'" + text)
 
 
-def _write_content(target: Any, cell: Cell) -> None:
-    match cell.content:
+def _write_content(target: Any, content: Content) -> None:
+    match content:
         case Formula(text):
             target.Formula = text
         case Number(value):
@@ -81,28 +91,29 @@ def _write_content(target: Any, cell: Cell) -> None:
 
 
 def _attempt(
-    session: Session, cell: Cell, what: str, step: Callable[[], None]
+    session: Session, line: Line, what: str, step: Callable[[], None]
 ) -> Rejected | None:
-    """One step of writing a cell. An exception the app raises is its answer for this
-    cell, unless the watchdog caused it, in which case it propagates as a stall."""
+    """One step of writing a line. An exception the app raises is its answer for this
+    line, unless the watchdog caused it, in which case it propagates as a stall."""
     try:
         step()
     except com_error() as error:
         if session.stalling():
             raise
         return _rejected(
-            cell, f"the spreadsheet app rejected {what}: {describe(error)}"
+            line, f"the spreadsheet app rejected {what}: {describe(error)}"
         )
     return None
 
 
-def _write_cell(session: Session, sheet: Any, cell: Cell) -> list[Rejected]:
-    if isinstance(cell.content, Text) and text_to_type(cell.content.value).is_err():
-        return [_rejected(cell, text_to_type(cell.content.value).unwrap_err())]
+def _write_cell(session: Session, sheet: Any, cell: Cell | Blank) -> list[Rejected]:
     target = sheet.Cells(cell.row, cell.col)
-    steps: list[tuple[str, Callable[[], None]]] = [
-        ("the cell's contents", lambda: _write_content(target, cell))
-    ]
+    steps: list[tuple[str, Callable[[], None]]] = []
+    if isinstance(cell, Cell):
+        content = cell.content
+        if isinstance(content, Text) and text_to_type(content.value).is_err():
+            return [_rejected(cell, text_to_type(content.value).unwrap_err())]
+        steps.append(("the cell's contents", lambda: _write_content(target, content)))
     fmt = cell.format
     if fmt.number_format is not None:
         code = fmt.number_format
@@ -118,17 +129,37 @@ def _write_cell(session: Session, sheet: Any, cell: Cell) -> list[Rejected]:
             target.IndentLevel = indent
 
         steps.append((f"the indent {indent}", indent_level))
-    match fmt.column_width:
-        case float() as width:
-
-            def column_width() -> None:
-                sheet.Columns(cell.col).ColumnWidth = width
-
-            steps.append((f"the column width {width!r}", column_width))
-        case Default() | None:
-            pass
     found = (_attempt(session, cell, what, step) for what, step in steps)
     return [rejected for rejected in found if rejected is not None]
+
+
+def _write_size(session: Session, sheet: Any, line: Column | Row) -> list[Rejected]:
+    """A column's width or a row's height. The line for every column or row sets them
+    all, so it is written before the lines for single ones."""
+    match line:
+        case Column(col=col, width=width):
+            what = f"the width {width!r} of {'every column' if col is None else 'it'}"
+
+            def size() -> None:
+                (sheet.Cells if col is None else sheet.Columns(col)).ColumnWidth = width
+
+        case Row(row=row, height=height):
+            what = f"the height {height!r} of {'every row' if row is None else 'it'}"
+
+            def size() -> None:
+                (sheet.Cells if row is None else sheet.Rows(row)).RowHeight = height
+
+    rejected = _attempt(session, line, what, size)
+    return [] if rejected is None else [rejected]
+
+
+def _single(line: Column | Row) -> bool:
+    """Whether a line sizes one column or row, rather than every one."""
+    match line:
+        case Column(col=col):
+            return col is not None
+        case Row(row=row):
+            return row is not None
 
 
 def _values(
@@ -195,9 +226,9 @@ def _close(session: Session, workbook: Any) -> list[OracleError]:
 def build(
     session: Session, yup: Yup, xlsx: Path | None = None
 ) -> Result[tuple[Value, ...], tuple[OracleError, ...]]:
-    """Have the app compute a ``.yup`` file: write every cell into a fresh workbook,
-    recalculate in full, and read back every cell's value. With ``xlsx``, also save the
-    workbook, as the app's own rendering of the file."""
+    """Have the app compute a ``.yup`` file: write every line into a fresh workbook,
+    recalculate in full, and read back the value of every cell with contents. With
+    ``xlsx``, also save the workbook, as the app's own rendering of the file."""
     app = session.app
 
     def create() -> tuple[Any, dict[str, Any], list[Rejected]]:
@@ -207,7 +238,9 @@ def build(
             workbook = app.Workbooks.Add()
         finally:
             app.SheetsInNewWorkbook = saved
-        first_line = {c.sheet: c for c in reversed(yup.cells)}
+        first_line: dict[str, Line] = {}
+        for line in yup.lines():
+            first_line.setdefault(line.sheet, line)
         rejected: list[Rejected] = []
         made: dict[str, Any] = {}
         previous = None
@@ -240,10 +273,14 @@ def build(
         return Err(tuple(errors + _close(session, workbook)))
 
     def write() -> list[Rejected]:
+        cells = [line for line in yup.lines() if isinstance(line, Cell | Blank)]
+        sizes = sorted(
+            (*yup.columns, *yup.rows),
+            key=lambda line: (isinstance(line, Row), _single(line), line.line),
+        )
         return [
-            r
-            for cell in yup.cells
-            for r in _write_cell(session, by_name[cell.sheet], cell)
+            *(r for c in cells for r in _write_cell(session, by_name[c.sheet], c)),
+            *(r for s in sizes for r in _write_size(session, by_name[s.sheet], s)),
         ]
 
     match session.guarded("writing cells", session.timeouts.cells, write):

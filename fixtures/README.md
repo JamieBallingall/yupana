@@ -9,6 +9,7 @@ Hand-written `.yup` files, each with `name.values.csv`: what the spreadsheet app
 | `functions` | `SUM`, `MIN`, `MAX` and `NA()`, over ranges and lists |
 | `errors` | every error the app shows, and one passed along |
 | `texts` | texts the app would otherwise take for something else, and XML's awkward characters |
-| `formats` | all three format keys, with built-in and custom number formats |
+| `formats` | number formats, built in and custom, indents and column widths |
+| `sizes` | the width of every column and the height of every row, single widths and heights, hidden columns and rows, a blank cell with a format, and a sheet with no cells |
 | `sheets` | three sheets, quoted names, and references between them |
 | `model` | a small model laid out with labels, numbers, formulas and formats |

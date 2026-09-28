@@ -6,7 +6,7 @@
 
 - CSV with RFC 4180 quoting, UTF-8 with no byte-order mark, and LF line endings.
 - The header is `sheet,row,col,type,value`.
-- One line per cell of the `.yup` file, in the same order.
+- One line per cell of the `.yup` file that has contents (a line of type `=`, `#`, `$` or `?`), in the same order.
 - `type` is the code of the spreadsheet function `TYPE`, and `value` is written accordingly:
 
 | `type` | Means | `value` |
@@ -16,7 +16,7 @@
 | `4` | logical | `TRUE` or `FALSE` |
 | `16` | error | The error as the app shows it: `#N/A`, `#DIV/0!`, `#VALUE!`, `#REF!`, `#NAME?`, `#NUM!`, `#NULL!`. Any text starting with `#` is accepted, since apps have more |
 
-There is no blank: every listed cell was written, and a formula that returns empty text has type `2` and an empty value.
+There is no blank: every cell with contents was written, and a formula that returns empty text has type `2` and an empty value. A blank cell, listed only for its format, has no line.
 
 ## An example
 
