@@ -18,6 +18,7 @@ from yupana.yup import (
     Text,
     Underline,
     VerticalAlignment,
+    View,
     Yup,
     read_yup,
 )
@@ -73,7 +74,7 @@ def test_a_file_with_several_problems_reports_them_all() -> None:
         'line 6: a logical is TRUE or FALSE, not "maybe"',
         'line 7: sheet name "Bad:Name" contains ":"',
         'line 8: sheet "model" is spelled "Model" earlier',
-        'line 9: type is one of = # $ ? . | -, not "%"',
+        'line 9: type is one of = # $ ? . | - !, not "%"',
     ]
 
 
@@ -295,10 +296,10 @@ def test_the_largest_row_and_col_are_accepted() -> None:
 # Types and cell contents.
 
 
-@pytest.mark.parametrize("kind", ["", "%", "==", "#$", "*", "!", "a", " #"])
+@pytest.mark.parametrize("kind", ["", "%", "==", "#$", "*", "!!", "a", " #"])
 def test_a_type_is_refused(kind: str) -> None:
     [error] = errors(yup(line(kind)))
-    assert error.startswith("line 3: type is one of = # $ ? . | -, not ")
+    assert error.startswith("line 3: type is one of = # $ ? . | - !, not ")
 
 
 @pytest.mark.parametrize(
@@ -632,3 +633,75 @@ def test_sheets_are_in_order_of_first_appearance_on_any_line() -> None:
         line(sheet="B"), column(sheet="C"), line(sheet="A"), line(sheet="B", row="2")
     )
     assert read_yup(text).unwrap().sheets == ("B", "C", "A")
+
+
+# Sheet lines.
+
+
+def view(fmt: str = "gridlines=false", sheet: str = "Model") -> str:
+    return line("!", "", fmt, sheet, "*", "*")
+
+
+def test_a_sheet_line_reads_to_its_view() -> None:
+    text = yup(
+        line(),
+        view("gridlines=false|zoom=85|tabcolor=0070C0|freezerows=2|freezecolumns=1"),
+        view("gridlines=true|zoom=400|freezerows=0", sheet="Other"),
+    )
+    assert read_yup(text).unwrap().views == (
+        View(4, "Model", False, 85, "0070C0", 2, 1),
+        View(5, "Other", gridlines=True, zoom=400, freeze_rows=0),
+    )
+
+
+def test_a_sheet_can_first_appear_on_its_sheet_line() -> None:
+    read = read_yup(yup(line(), view(sheet="Blank"))).unwrap()
+    assert read.sheets == ("Model", "Blank")
+
+
+@pytest.mark.parametrize(
+    ("text", "message"),
+    [
+        (view("zoom=9"), 'zoom must be a whole number from 10 to 400, not "9"'),
+        (view("zoom=401"), 'zoom must be a whole number from 10 to 400, not "401"'),
+        (view("zoom=085"), 'zoom must be a whole number from 10 to 400, not "085"'),
+        (view("zoom=85.5"), 'not "85.5"'),
+        (view("gridlines=no"), 'gridlines is true or false, not "no"'),
+        (view("tabcolor=blue"), 'tabcolor is a colour'),
+        (view("freezerows=-1"), 'freezerows must be a whole number from 0 to 1048575, not "-1"'),
+        (view("freezerows=1048576"), 'not "1048576"'),
+        (view("freezecolumns=16384"), 'freezecolumns must be a whole number from 0 to 16383, not "16384"'),
+        (view("columnwidth=5"), "the format key columnwidth is for a | line, not a ! line"),
+        (view("bold=true"), "the format key bold is for a cell, not a ! line"),
+        (view(""), "a ! line needs a format: a sheet shown as it is by default is not listed"),
+        (line("!", "", "zoom=85", row="1", col="*"), 'row is * on a ! line, not "1"'),
+        (line("!", "", "zoom=85", row="*", col="1"), 'col is * on a ! line, not "1"'),
+        (line("!", "x", "zoom=85", row="*", col="*"), 'the cell field of a ! line is empty, not "x"'),
+    ],
+)  # fmt: skip
+def test_a_sheet_line_is_refused(text: str, message: str) -> None:
+    [error] = errors(yup(line(), text))
+    assert error.startswith("line 4: ")
+    assert message in error
+
+
+def test_only_the_bad_value_on_a_sheet_line_is_reported() -> None:
+    assert errors(yup(line(), view("gridlines=false|freezerows=x"))) == [
+        'line 4: freezerows must be a whole number from 0 to 1048575, not "x"'
+    ]
+
+
+def test_a_sheet_has_one_sheet_line() -> None:
+    text = yup(line(), view(), view("zoom=85", sheet="MODEL"))
+    assert errors(text) == [
+        'line 5: sheet "MODEL" is spelled "Model" earlier',
+        'line 5: sheet "Model" already has a ! line, on line 4',
+    ]
+
+
+def test_sheet_lines_come_last() -> None:
+    text = yup(line(), view(), view(sheet="Other"), line(row="2"), column())
+    assert errors(text) == [
+        "line 6: the ! lines come last, after every other line, and line 4 is one",
+        "line 7: the ! lines come last, after every other line, and line 4 is one",
+    ]

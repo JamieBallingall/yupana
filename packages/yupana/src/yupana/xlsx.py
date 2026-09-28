@@ -34,6 +34,7 @@ from yupana.yup import (
     Text,
     Underline,
     VerticalAlignment,
+    View,
     Yup,
     quoted,
 )
@@ -249,12 +250,14 @@ def _cell(cell: Cell | Blank, style: int, strings: dict[str, int]) -> str:
 
 @dataclass(frozen=True, slots=True)
 class _Sheet:
-    """One sheet as the writer gathers it: each cell's XML by row and col, and the
-    widths and heights its lines give, by col or row, ``None`` meaning every one."""
+    """One sheet as the writer gathers it: each cell's XML by row and col; the widths
+    and heights its lines give, by col or row, ``None`` meaning every one; and its view,
+    if it has one."""
 
     cells: dict[int, dict[int, str]]
     widths: dict[int | None, float]
     heights: dict[int | None, float]
+    view: View | None
 
 
 def _cols(widths: dict[int | None, float]) -> str:
@@ -330,17 +333,53 @@ def _dimension(cells: dict[int, dict[int, str]]) -> str:
     return top_left if top_left == bottom_right else f"{top_left}:{bottom_right}"
 
 
+def _pane(rows: int, columns: int) -> str:
+    """Frozen panes: the rows above and the columns left of the first cell that scrolls,
+    with the scrolling pane active, as the app writes them."""
+    if not rows and not columns:
+        return ""
+    active = "bottomRight" if rows and columns else "bottomLeft" if rows else "topRight"
+    splits = (f' xSplit="{columns}"' if columns else "") + (
+        f' ySplit="{rows}"' if rows else ""
+    )
+    return (
+        f'<pane{splits} topLeftCell="{address(rows + 1, columns + 1)}" '
+        f'activePane="{active}" state="frozen"/><selection pane="{active}"/>'
+    )
+
+
+def _sheet_view(view: View | None, first: bool) -> str:
+    """The ``<sheetView>``: gridlines, whether the workbook opens on it, zoom, and
+    frozen panes, in the order the app writes them."""
+    attributes = ""
+    if view is not None and view.gridlines is False:
+        attributes += ' showGridLines="0"'
+    if first:
+        attributes += ' tabSelected="1"'
+    if view is not None and view.zoom not in (None, 100):
+        attributes += f' zoomScale="{view.zoom}" zoomScaleNormal="{view.zoom}"'
+    attributes += ' workbookViewId="0"'
+    pane = (
+        "" if view is None else _pane(view.freeze_rows or 0, view.freeze_columns or 0)
+    )
+    if not pane:
+        return f"<sheetView{attributes}/>"
+    return f"<sheetView{attributes}>{pane}</sheetView>"
+
+
 def _worksheet(sheet: _Sheet, first: bool) -> str:
     numbered = sorted(set(sheet.cells) | {r for r in sheet.heights if r is not None})
     every = sheet.heights.get(None)
     data = "".join(
         _row(r, sheet.cells.get(r, {}), sheet.heights.get(r), every) for r in numbered
     )
-    selected = ' tabSelected="1"' if first else ""
+    properties = ""
+    if sheet.view is not None and sheet.view.tab_color is not None:
+        properties = f'<sheetPr><tabColor rgb="FF{sheet.view.tab_color}"/></sheetPr>'
     return (
-        f'<worksheet xmlns="{MAIN}" xmlns:r="{RELATIONSHIPS}">'
+        f'<worksheet xmlns="{MAIN}" xmlns:r="{RELATIONSHIPS}">{properties}'
         f'<dimension ref="{_dimension(sheet.cells)}"/>'
-        f'<sheetViews><sheetView{selected} workbookViewId="0"/></sheetViews>'
+        f"<sheetViews>{_sheet_view(sheet.view, first)}</sheetViews>"
         f"{_sheet_format(sheet)}{_cols(sheet.widths)}<sheetData>{data}</sheetData>"
         '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" '
         'header="0.3" footer="0.3"/></worksheet>'
@@ -469,7 +508,11 @@ def write_xlsx(yup: Yup) -> Result[bytes, tuple[WriteError, ...]]:
     """
     styles = _new_styles()
     strings: dict[str, int] = {}
-    sheets = {name: _Sheet(cells={}, widths={}, heights={}) for name in yup.sheets}
+    views = {view.sheet: view for view in yup.views}
+    sheets = {
+        name: _Sheet(cells={}, widths={}, heights={}, view=views.get(name))
+        for name in yup.sheets
+    }
     errors: list[WriteError] = []
     text_cells = 0
     # In file order, so that styles and shared strings are numbered in order of first use.

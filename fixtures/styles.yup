@@ -44,3 +44,4 @@ Styles	33	2	$	Middle	valign=center|halign=center
 Styles	33	3	$	Bottom	valign=bottom
 Styles	34	*	-		rowheight=45
 Styles	34	1	$	A long label that wraps onto more lines within its cell	wrap=true|valign=top
+Styles	*	*	!		gridlines=false|zoom=85|tabcolor=0070C0|freezerows=1|freezecolumns=1

@@ -21,3 +21,5 @@ Sizes	9	1	$	The sum of the two hidden numbers
 Sizes	9	2	=	B5+C6	numberformat=0.00
 Only sizes	*	2	|		columnwidth=4.5
 Only sizes	2	*	-		rowheight=30
+Sizes	*	*	!		freezerows=2
+Only sizes	*	*	!		freezecolumns=1|tabcolor=00B050|zoom=120

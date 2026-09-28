@@ -61,7 +61,7 @@ JSON_NUMBER = re.compile(r"-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?")
 ESCAPE_SHAPE = re.compile(r"_x[0-9A-Fa-f]{4}_")
 _NOT_IN_SHEET_NAME = ":\\/?*[]"
 _CELL_TYPES = ("=", "#", "$", "?", ".")
-_TYPES = (*_CELL_TYPES, "|", "-")
+_TYPES = (*_CELL_TYPES, "|", "-", "!")
 _COLOR = re.compile(r"[0-9A-F]{6}")
 EDGES = ("top", "bottom", "left", "right")
 """A cell's edges, in the order the border keys are listed."""
@@ -79,7 +79,13 @@ _CELL_KEYS = (
     "valign",
     "wrap",
 )
-_KEYS = {"|": ("columnwidth",), "-": ("rowheight",)}
+_KEYS = {
+    "|": ("columnwidth",),
+    "-": ("rowheight",),
+    "!": ("gridlines", "zoom", "tabcolor", "freezerows", "freezecolumns"),
+}
+MIN_ZOOM = 10
+MAX_ZOOM = 400
 _HOME = {key: "a cell" for key in _CELL_KEYS} | {
     key: f"a {kind} line" for kind, keys in _KEYS.items() for key in keys
 }
@@ -220,7 +226,20 @@ class Row:
     height: float
 
 
-type Line = Cell | Blank | Column | Row
+@dataclass(frozen=True, slots=True)
+class View:
+    """How a sheet is shown: a line of type ``!``. ``None`` means the key is absent."""
+
+    line: int
+    sheet: str
+    gridlines: bool | None = None
+    zoom: int | None = None
+    tab_color: str | None = None
+    freeze_rows: int | None = None
+    freeze_columns: int | None = None
+
+
+type Line = Cell | Blank | Column | Row | View
 
 
 @dataclass(frozen=True, slots=True)
@@ -229,7 +248,7 @@ class Yup:
 
     Its sheets, in order of first appearance; its cells with contents, in file order, one
     for each line of the values CSV; and the lines that only format: blank cells,
-    columns and rows, each in file order.
+    columns, rows and views of sheets, each in file order.
     """
 
     sheets: tuple[str, ...]
@@ -237,10 +256,11 @@ class Yup:
     blanks: tuple[Blank, ...] = ()
     columns: tuple[Column, ...] = ()
     rows: tuple[Row, ...] = ()
+    views: tuple[View, ...] = ()
 
     def lines(self) -> tuple[Line, ...]:
         """Every line after the header, in file order."""
-        every = (*self.cells, *self.blanks, *self.columns, *self.rows)
+        every = (*self.cells, *self.blanks, *self.columns, *self.rows, *self.views)
         return tuple(sorted(every, key=lambda line: line.line))
 
 
@@ -406,14 +426,20 @@ def _number_format(text: str) -> Result[str, str]:
     return Ok(text)
 
 
-def _indent(text: str) -> Result[int, str]:
-    if (text == "0" or (_INTEGER.fullmatch(text) and len(text) <= 3)) and int(
-        text
-    ) <= MAX_INDENT:
-        return Ok(int(text))
-    return Err(
-        f"indent must be a whole number from 0 to {MAX_INDENT}, not {quoted(text)}"
-    )
+def _whole(key: str, low: int, high: int) -> Callable[[str], Result[int, str]]:
+    """A whole number from ``low`` to ``high``, written as ``row`` is, or ``0``."""
+
+    def parse(text: str) -> Result[int, str]:
+        written = text == "0" or (
+            _INTEGER.fullmatch(text) is not None and len(text) <= len(str(high))
+        )
+        if written and low <= int(text) <= high:
+            return Ok(int(text))
+        return Err(
+            f"{key} must be a whole number from {low} to {high}, not {quoted(text)}"
+        )
+
+    return parse
 
 
 def _either(words: Iterable[str]) -> str:
@@ -488,58 +514,68 @@ def _pairs(text: str, kind: str) -> tuple[dict[str, str], list[str]]:
     return pairs, problems
 
 
-def _cell_format(pairs: dict[str, str]) -> Result[Format, list[str]]:
-    """A cell's formats, or every problem with their values."""
-    problems: list[str] = []
+@dataclass(frozen=True, slots=True)
+class _Values:
+    """A format's values by key, each parsed on request, gathering every problem."""
 
-    def parsed[T](key: str, parse: Callable[[str], Result[T, str]]) -> T | None:
-        text = pairs.get(key)
+    pairs: dict[str, str]
+    problems: list[str]
+
+    def get[T](self, key: str, parse: Callable[[str], Result[T, str]]) -> T | None:
+        """The key's value, parsed, or ``None`` if it is absent or bad."""
+        text = self.pairs.get(key)
         if text is None:
             return None
         match parse(text):
             case Ok(value):
                 return value
             case Err(problem):
-                problems.append(problem)
+                self.problems.append(problem)
                 return None
+
+
+def _cell_format(pairs: dict[str, str]) -> Result[Format, list[str]]:
+    """A cell's formats, or every problem with their values."""
+    values = _Values(pairs, [])
 
     def border(edge: str) -> Border | None:
         key = f"border{edge}"
-        style = parsed(key, _choice(key, tuple(LineStyle)))
-        color = parsed(f"{key}color", _color(f"{key}color"))
+        style = values.get(key, _choice(key, tuple(LineStyle)))
+        color = values.get(f"{key}color", _color(f"{key}color"))
         if f"{key}color" in pairs and key not in pairs:
-            problems.append(f"{key}color needs {key}, the line it colours")
+            values.problems.append(f"{key}color needs {key}, the line it colours")
         return None if style is None else Border(style, color)
 
     fmt = Format(
-        number_format=parsed("numberformat", _number_format),
-        indent=parsed("indent", _indent),
-        bold=parsed("bold", _flag("bold")),
-        italic=parsed("italic", _flag("italic")),
-        underline=parsed("underline", _choice("underline", tuple(Underline))),
-        font_color=parsed("fontcolor", _color("fontcolor")),
-        fill=parsed("fill", _color("fill")),
+        number_format=values.get("numberformat", _number_format),
+        indent=values.get("indent", _whole("indent", 0, MAX_INDENT)),
+        bold=values.get("bold", _flag("bold")),
+        italic=values.get("italic", _flag("italic")),
+        underline=values.get("underline", _choice("underline", tuple(Underline))),
+        font_color=values.get("fontcolor", _color("fontcolor")),
+        fill=values.get("fill", _color("fill")),
         border_top=border("top"),
         border_bottom=border("bottom"),
         border_left=border("left"),
         border_right=border("right"),
-        halign=parsed("halign", _choice("halign", tuple(HorizontalAlignment))),
-        valign=parsed("valign", _choice("valign", tuple(VerticalAlignment))),
-        wrap=parsed("wrap", _flag("wrap")),
+        halign=values.get("halign", _choice("halign", tuple(HorizontalAlignment))),
+        valign=values.get("valign", _choice("valign", tuple(VerticalAlignment))),
+        wrap=values.get("wrap", _flag("wrap")),
     )
     if fmt.indent and fmt.halign is HorizontalAlignment.CENTER:
-        problems.append(
+        values.problems.append(
             "indent cannot go with halign=center: the app indents only from an edge"
         )
-    return Err(problems) if problems else Ok(fmt)
+    return Err(values.problems) if values.problems else Ok(fmt)
 
 
 @dataclass(frozen=True, slots=True)
 class _Placed:
     """What a line names, as far as it could be read, for the rules across lines.
 
-    ``kind`` is ``cell``, ``width`` or ``height``, and ``slot`` which one of those on the
-    sheet the line names, such as ``row 2, col 3``, or ``None`` if it could not be read.
+    ``kind`` is ``cell``, ``width``, ``height`` or ``view``, and ``slot`` which one of
+    those on the sheet the line names, such as ``row 2, col 3``, or ``None`` if it could
+    not be read.
     """
 
     line: int
@@ -549,11 +585,12 @@ class _Placed:
 
 
 def _across_lines(placed: Iterable[_Placed]) -> list[YupError]:
-    """The rules that no single line can break: spelling, and one line per cell, column
-    and row."""
+    """The rules that no single line can break: spelling, one line per cell, column, row
+    and sheet view, and the views last."""
     errors: list[YupError] = []
     spelling: dict[str, str] = {}
     first_line: dict[tuple[str, str, str], int] = {}
+    first_view: int | None = None
     for p in placed:
         key = p.sheet.casefold()
         first = spelling.setdefault(key, p.sheet)
@@ -564,6 +601,16 @@ def _across_lines(placed: Iterable[_Placed]) -> list[YupError]:
                     f"sheet {quoted(p.sheet)} is spelled {quoted(first)} earlier",
                 )
             )
+        if p.kind == "view":
+            first_view = first_view or p.line
+        elif first_view is not None:
+            errors.append(
+                YupError(
+                    p.line,
+                    f"the ! lines come last, after every other line, "
+                    f"and line {first_view} is one",
+                )
+            )
         if p.slot is None:
             continue
         named = (key, p.kind, p.slot)
@@ -572,13 +619,34 @@ def _across_lines(placed: Iterable[_Placed]) -> list[YupError]:
             continue
         where = f"sheet {quoted(first)}, {p.slot}"
         earlier = first_line[named]
-        message = (
-            f"{where} is already on line {earlier}"
-            if p.kind == "cell"
-            else f"the {p.kind} of {where}, is already on line {earlier}"
-        )
+        match p.kind:
+            case "cell":
+                message = f"{where} is already on line {earlier}"
+            case "view":
+                message = (
+                    f"sheet {quoted(first)} already has a ! line, on line {earlier}"
+                )
+            case _:
+                message = f"the {p.kind} of {where}, is already on line {earlier}"
         errors.append(YupError(p.line, message))
     return errors
+
+
+def _view(number: int, sheet: str, pairs: dict[str, str]) -> Result[View, list[str]]:
+    """A sheet's view, or every problem with its values."""
+    values = _Values(pairs, [])
+    view = View(
+        number,
+        sheet,
+        gridlines=values.get("gridlines", _flag("gridlines")),
+        zoom=values.get("zoom", _whole("zoom", MIN_ZOOM, MAX_ZOOM)),
+        tab_color=values.get("tabcolor", _color("tabcolor")),
+        freeze_rows=values.get("freezerows", _whole("freezerows", 0, MAX_ROW - 1)),
+        freeze_columns=values.get(
+            "freezecolumns", _whole("freezecolumns", 0, MAX_COL - 1)
+        ),
+    )
+    return Err(values.problems) if values.problems else Ok(view)
 
 
 def _line(number: int, fields: list[str]) -> tuple[Line | None, list[str], _Placed]:
@@ -632,6 +700,25 @@ def _line(number: int, fields: list[str]) -> tuple[Line | None, list[str], _Plac
         if content is None:
             return Blank(number, sheet, row, col, cell_format), problems, placed
         return Cell(number, sheet, row, col, content, cell_format), problems, placed
+
+    if kind == "!":
+        read(_every("row", row_text, kind))
+        read(_every("col", col_text, kind))
+        empty_cell()
+        pairs, format_problems = _pairs(format_text, kind)
+        problems += format_problems
+        if not format_text:
+            problems.append(
+                "a ! line needs a format: a sheet shown as it is by default is not listed"
+            )
+        view = None
+        match _view(number, sheet, pairs):
+            case Ok(read_view):
+                view = read_view
+            case Err(value_problems):
+                problems += value_problems
+        placed = _Placed(number, sheet, "view", "")
+        return (None if problems else view), problems, placed
 
     # A column or a row: one of row and col says which, and the other is *.
     column = kind == "|"
@@ -733,5 +820,6 @@ def read_yup(text: str) -> Result[Yup, tuple[YupError, ...]]:
             blanks=tuple(line for line in read if isinstance(line, Blank)),
             columns=tuple(line for line in read if isinstance(line, Column)),
             rows=tuple(line for line in read if isinstance(line, Row)),
+            views=tuple(line for line in read if isinstance(line, View)),
         )
     )

@@ -218,6 +218,45 @@ def test_the_app_shows_each_style_as_the_writer_says(session: Session) -> None:
     }
 
 
+def views_shown(workbook: Any) -> list[tuple[bool, int, bool, int, int, object]]:
+    """How the app shows each sheet: gridlines, zoom, whether panes are frozen, the
+    rows and columns frozen, and the tab's colour. The window shows the active sheet."""
+    shown = []
+    for sheet in workbook.Worksheets:
+        sheet.Activate()
+        window = workbook.Windows(1)
+        shown.append(
+            (
+                window.DisplayGridlines,
+                window.Zoom,
+                window.FreezePanes,
+                window.SplitRow,
+                window.SplitColumn,
+                sheet.Tab.Color,
+            )
+        )
+    return shown
+
+
+@pytest.mark.app
+def test_the_app_shows_each_sheet_as_the_writer_says(session: Session) -> None:
+    found = []
+    for name in ("styles", "sizes", "model"):
+        path = TARGET / f"{name}-views.xlsx"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write_xlsx_file(read_yup(fixture(name)).unwrap(), path).unwrap()
+        workbook = session.app.Workbooks.Open(str(path), UpdateLinks=0, ReadOnly=True)
+        found += views_shown(workbook)
+        workbook.Close(SaveChanges=False)
+    # A tab without a colour has none: False.
+    assert found == [
+        (False, 85, True, 1, 1, bgr("0070C0")),
+        (True, 100, True, 2, 0, False),
+        (True, 120, True, 0, 1, bgr("00B050")),
+        (True, 100, False, 0, 0, False),
+    ]
+
+
 @pytest.mark.app
 def test_side_by_side_workbooks_for_a_human_to_compare(session: Session) -> None:
     """Both renderings of every fixture, for comparing by eye in the app:

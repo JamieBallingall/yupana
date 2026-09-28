@@ -2,7 +2,7 @@
 
 Version 0.0.2. **Not yet stable:** a later version may change anything, or everything, here.
 
-A `.yup` file lists the cells of a workbook, one per line: what is in each cell and how it is formatted. It is a [straight-line program](https://en.wikipedia.org/wiki/Straight-line_program) intended to be laid out on a grid. Other lines size its columns and rows.
+A `.yup` file lists the cells of a workbook, one per line: what is in each cell and how it is formatted. It is a [straight-line program](https://en.wikipedia.org/wiki/Straight-line_program) intended to be laid out on a grid. Other lines size its columns and rows, and say how each sheet is shown.
 
 In the examples below, `→` stands for a tab. Real tabs do not survive copying from rendered text.
 
@@ -35,6 +35,7 @@ Model →  3  →  2  →  #   → 0.08      → numberformat=0.0%
 Model →  4  →  *  →  -   →           → rowheight=6
 Model →  5  →  1  →  $   → Next year →
 Model →  5  →  2  →  =   → B2*(1+B3) → numberformat=#,##0.0;(#,##0.0)
+Model →  *  →  *  →  !   →           → freezerows=1|freezecolumns=1
 ```
 
 ### Characters
@@ -72,6 +73,7 @@ What the line describes, in one character:
 | `.` | a blank cell, listed for its format | a row | a col | empty | cell keys, at least one |
 | `\|` | a column | `*` | a col, or `*` for every column | empty | `columnwidth` |
 | `-` | a row | a row, or `*` for every row | `*` | empty | `rowheight` |
+| `!` | the sheet | `*` | `*` | empty | sheet keys, at least one |
 
 Anything else is an error. Lines of the first five types are the **cells**. A blank cell with no format is not listed.
 
@@ -129,10 +131,21 @@ On a column (`|`) or a row (`-`):
 
 The line for every column (col `*`) sets the width of each column that has no line of its own, and the line for every row (row `*`) the height of each such row. Neither can be `0`. A column or row with neither keeps the spreadsheet app's standard size.
 
+On a sheet (`!`):
+
+| Key | Value | Means |
+|---|---|---|
+| `gridlines` | `true` or `false` | Whether the sheet shows gridlines. Without it, it does |
+| `zoom` | a whole number from 10 to 400, written as `row` is | The sheet's zoom, in per cent. Without it, 100 |
+| `tabcolor` | a colour | The colour of the sheet's tab |
+| `freezerows` | a whole number from 0 to 1,048,575, written as `row` is (or `0`) | How many rows at the top stay in view as the sheet scrolls |
+| `freezecolumns` | a whole number from 0 to 16,383, written as `col` is (or `0`) | How many columns at the left stay in view as the sheet scrolls |
+
 ### Rules across lines
 
 - No two cells name the same sheet, row and col.
 - No two columns name the same sheet and col, and no two rows the same sheet and row, counting `*` as one more col or row.
+- A sheet has at most one `!` line, and the `!` lines come last, after every other line.
 - Each sheet is spelled one way throughout.
 
 ### Rules for writers

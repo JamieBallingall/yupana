@@ -599,6 +599,67 @@ def test_sizes_go_to_their_own_sheets() -> None:
     assert '<row r="3" ht="30" customHeight="1"/>' in found["xl/worksheets/sheet2.xml"]
 
 
+# Sheet views.
+
+
+def views(*fmts: str) -> list[str]:
+    """Each sheet's ``<sheetViews>``, for sheets given a ``!`` line each, the first with
+    ``fmts[0]``."""
+    lines = [f"S{i}\t1\t1\t#\t1\t" for i in range(len(fmts))]
+    lines += [f"S{i}\t*\t*\t!\t\t{fmt}" for i, fmt in enumerate(fmts)]
+    found = parts(yup(*lines))
+    return [
+        matched(r"<sheetViews>(.*)</sheetViews>", found[f"xl/worksheets/sheet{i}.xml"])
+        for i in range(1, len(fmts) + 1)
+    ]
+
+
+def sheet_view(attributes: str = "", inside: str = "") -> str:
+    opened = f'<sheetView{attributes} workbookViewId="0"'
+    return f"{opened}/>" if not inside else f"{opened}>{inside}</sheetView>"
+
+
+def frozen(splits: str, top_left: str, pane: str) -> str:
+    return (
+        f'<pane {splits} topLeftCell="{top_left}" activePane="{pane}" state="frozen"/>'
+        f'<selection pane="{pane}"/>'
+    )
+
+
+def test_gridlines_and_zoom_are_attributes_of_the_view() -> None:
+    assert views("gridlines=false|zoom=85", "gridlines=true|zoom=100", "zoom=400") == [
+        sheet_view(
+            ' showGridLines="0" tabSelected="1" zoomScale="85" zoomScaleNormal="85"'
+        ),
+        sheet_view(),
+        sheet_view(' zoomScale="400" zoomScaleNormal="400"'),
+    ]
+
+
+def test_frozen_panes_scroll_below_and_right_of_them() -> None:
+    assert views(
+        "freezerows=2|freezecolumns=1",
+        "freezerows=3",
+        "freezecolumns=2",
+        "freezerows=0|freezecolumns=0",
+    ) == [
+        sheet_view(
+            ' tabSelected="1"', frozen('xSplit="1" ySplit="2"', "B3", "bottomRight")
+        ),
+        sheet_view("", frozen('ySplit="3"', "A4", "bottomLeft")),
+        sheet_view("", frozen('xSplit="2"', "C1", "topRight")),
+        sheet_view(),
+    ]
+
+
+def test_a_tab_colour_is_a_sheet_property_before_everything_else() -> None:
+    xml = worksheet(yup("S\t1\t1\t#\t1\t", "S\t*\t*\t!\t\ttabcolor=00B050"))
+    assert xml.startswith(
+        f'<worksheet xmlns="{MAIN}" xmlns:r="{RELATIONSHIPS}">'
+        '<sheetPr><tabColor rgb="FF00B050"/></sheetPr><dimension ref="A1"/>'
+    )
+
+
 # Several sheets.
 
 

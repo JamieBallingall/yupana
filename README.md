@@ -23,7 +23,7 @@ Model →  2  →  1  →  $   → Next year   → indent=1
 Model →  2  →  2  →  =   → B1*(1+0.08) → numberformat=#,##0.0
 ```
 
-The type says what a line is: `=` a formula, `#` a number, `$` a text, `?` `TRUE` or `FALSE`, and `.` a blank cell, listed only for its format. A cell's format holds its number format, font, fill, borders and alignment. A `|` line sets a column's width and a `-` line a row's height, where `*` stands for every row or column. [`SPEC.md`](SPEC.md) has every rule.
+The type says what a line is: `=` a formula, `#` a number, `$` a text, `?` `TRUE` or `FALSE`, and `.` a blank cell, listed only for its format. A cell's format holds its number format, font, fill, borders and alignment. A `|` line sets a column's width and a `-` line a row's height, where `*` stands for every row or column. A `!` line, after all the others, says how a sheet is shown. [`SPEC.md`](SPEC.md) has every rule.
 
 ## Use
 
@@ -50,6 +50,7 @@ Every expected failure is a value, a `Result` from `yupana.result`: `read_yup` r
 - Bold, italic, four kinds of underline, font colours, and solid fills.
 - Borders: a line along any edge of a cell, in one of six styles and any colour.
 - Alignment across and up and down a cell, and wrapped text.
+- For each sheet, whether it shows gridlines, its zoom, its tab's colour, and frozen rows and columns.
 - Column widths and row heights, for single columns and rows or for every one, and hidden columns and rows.
 - **Formula cells carry no cached value.** The spreadsheet app computes every formula when it opens the file, but a program that reads the file as data sees no value in them.
 - The same `.yup` file always gives the same bytes.

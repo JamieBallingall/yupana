@@ -36,6 +36,7 @@ from yupana.yup import (
     Text,
     Underline,
     VerticalAlignment,
+    View,
     Yup,
     utf16_length,
 )
@@ -89,6 +90,8 @@ def _rejected(line: Line, message: str) -> Rejected:
             return Rejected(line.line, line.sheet, None, line.col, message)
         case Row():
             return Rejected(line.line, line.sheet, line.row, None, message)
+        case View():
+            return Rejected(line.line, line.sheet, None, None, message)
 
 
 def text_to_type(text: str) -> Result[str, str]:
@@ -257,6 +260,43 @@ def _write_size(session: Session, sheet: Any, line: Column | Row) -> list[Reject
     return [] if rejected is None else [rejected]
 
 
+def _write_view(
+    session: Session, workbook: Any, sheet: Any, view: View
+) -> list[Rejected]:
+    """How a sheet is shown. All but the tab's colour belong to the workbook's window,
+    which shows the active sheet, so the sheet is activated first."""
+
+    def tab() -> Any:
+        return sheet.Tab
+
+    def window() -> Any:
+        return workbook.Windows(1)
+
+    def freeze() -> None:
+        # Split at the first cell that scrolls, from the top left, then freeze.
+        shown = workbook.Windows(1)
+        shown.FreezePanes = False
+        shown.ScrollRow = 1
+        shown.ScrollColumn = 1
+        shown.SplitColumn = view.freeze_columns or 0
+        shown.SplitRow = view.freeze_rows or 0
+        shown.FreezePanes = True
+
+    steps: list[tuple[str, Callable[[], None]]] = []
+    if view.tab_color is not None:
+        what = f"the tab colour {view.tab_color}"
+        steps.append((what, _set(tab, "Color", bgr(view.tab_color))))
+    steps.append(("showing the sheet", sheet.Activate))
+    if view.gridlines is not None:
+        steps.append(("gridlines", _set(window, "DisplayGridlines", view.gridlines)))
+    if view.zoom is not None:
+        steps.append((f"the zoom {view.zoom}", _set(window, "Zoom", view.zoom)))
+    if view.freeze_rows or view.freeze_columns:
+        steps.append(("frozen panes", freeze))
+    found = (_attempt(session, view, what, step) for what, step in steps)
+    return [rejected for rejected in found if rejected is not None]
+
+
 def _single(line: Column | Row) -> bool:
     """Whether a line sizes one column or row, rather than every one."""
     match line:
@@ -382,10 +422,18 @@ def build(
             (*yup.columns, *yup.rows),
             key=lambda line: (isinstance(line, Row), _single(line), line.line),
         )
-        return [
+        rejected = [
             *(r for c in cells for r in _write_cell(session, by_name[c.sheet], c)),
             *(r for s in sizes for r in _write_size(session, by_name[s.sheet], s)),
+            *(
+                r
+                for v in yup.views
+                for r in _write_view(session, workbook, by_name[v.sheet], v)
+            ),
         ]
+        # Showing a sheet's view activates it; the writer's workbooks open on the first.
+        workbook.Worksheets(1).Activate()
+        return rejected
 
     match session.guarded("writing cells", session.timeouts.cells, write):
         case Err(stalled):

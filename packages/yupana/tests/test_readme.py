@@ -41,7 +41,8 @@ def test_the_readme_shows_the_example_file() -> None:
 
 def test_the_specifications_example_is_a_good_yup_file() -> None:
     yup = read_yup(shown(SPEC)).unwrap()
-    assert (len(yup.cells), len(yup.columns), len(yup.rows)) == (8, 2, 1)
+    counts = (len(yup.cells), len(yup.columns), len(yup.rows), len(yup.views))
+    assert counts == (8, 2, 1, 1)
     assert write_xlsx(yup).is_ok()
 
 
