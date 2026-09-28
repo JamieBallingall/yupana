@@ -28,6 +28,7 @@ from yupana.yup import (
     Format,
     Formula,
     Line,
+    LineStyle,
     Logical,
     Number,
     Row,
@@ -54,6 +55,16 @@ _UNDERLINES = {
     Underline.DOUBLE: -4119,
     Underline.SINGLE_ACCOUNTING: 4,
     Underline.DOUBLE_ACCOUNTING: 5,
+}
+# The app's index of each edge, and the style and weight it saves as each line.
+_EDGES = {"left": 7, "top": 8, "bottom": 9, "right": 10}
+_LINES = {
+    LineStyle.THIN: (1, 2),
+    LineStyle.MEDIUM: (1, -4138),
+    LineStyle.THICK: (1, 4),
+    LineStyle.DOUBLE: (-4119, 4),
+    LineStyle.DOTTED: (-4118, 2),
+    LineStyle.DASHED: (-4115, 2),
 }
 
 
@@ -164,7 +175,30 @@ def _formats(target: Any, fmt: Format) -> list[tuple[str, Callable[[], None]]]:
         settings.append((what, font, "Color", bgr(fmt.font_color)))
     if fmt.fill is not None:
         settings.append((f"the fill {fmt.fill}", interior, "Color", bgr(fmt.fill)))
+    for edge, border in (
+        ("top", fmt.border_top),
+        ("bottom", fmt.border_bottom),
+        ("left", fmt.border_left),
+        ("right", fmt.border_right),
+    ):
+        if border is None:
+            continue
+        line = _edge(target, _EDGES[edge])
+        what = f"the {border.style.value} line along the {edge}"
+        style, weight = _LINES[border.style]
+        settings += [(what, line, "LineStyle", style), (what, line, "Weight", weight)]
+        if border.color is not None:
+            settings.append((f"{what}'s colour", line, "Color", bgr(border.color)))
     return [(what, _set(owner, name, value)) for what, owner, name, value in settings]
+
+
+def _edge(target: Any, index: int) -> Callable[[], Any]:
+    """What fetches the line along one edge of a cell."""
+
+    def line() -> Any:
+        return target.Borders(index)
+
+    return line
 
 
 def _write_cell(session: Session, sheet: Any, cell: Cell | Blank) -> list[Rejected]:

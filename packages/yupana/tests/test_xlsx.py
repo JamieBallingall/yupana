@@ -409,6 +409,43 @@ def test_fonts_and_fills_are_shared_and_allocated_in_order_of_first_use() -> Non
     ]  # fmt: skip
 
 
+def test_borders_are_shared_and_written_edge_by_edge_as_the_app_writes_them() -> None:
+    text = yup(
+        "S\t1\t1\t.\t\tbordertop=thin",
+        "S\t2\t1\t$\ta\tborderbottom=double|borderbottomcolor=0070C0|bold=true",
+        "S\t3\t1\t.\t\tbordertop=thin",
+        "S\t4\t1\t.\t\tborderleft=thick|borderright=medium|bordertop=dotted|"
+        "borderbottom=dashed",
+    )
+    found = styles(text)
+    assert matched(r"<borders[^>]*>(.*)</borders>", found) == (
+        "<border><left/><right/><top/><bottom/><diagonal/></border>"
+        '<border><left/><right/><top style="thin"><color indexed="64"/></top>'
+        "<bottom/><diagonal/></border>"
+        '<border><left/><right/><top/><bottom style="double">'
+        '<color rgb="FF0070C0"/></bottom><diagonal/></border>'
+        '<border><left style="thick"><color indexed="64"/></left>'
+        '<right style="medium"><color indexed="64"/></right>'
+        '<top style="dotted"><color indexed="64"/></top>'
+        '<bottom style="dashed"><color indexed="64"/></bottom><diagonal/></border>'
+    )
+    assert '<borders count="4">' in found
+    assert matched(r"<cellXfs[^>]*>(.*)</cellXfs>", found) == (
+        xf() + '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" '
+        'applyBorder="1"/>'
+        + '<xf numFmtId="0" fontId="1" fillId="0" borderId="2" xfId="0" '
+        'applyFont="1" applyBorder="1"/>'
+        + '<xf numFmtId="0" fontId="0" fillId="0" borderId="3" xfId="0" '
+        'applyBorder="1"/>'
+    )
+    assert re.findall(r'<c r="A\d+" s="(\d+)"', sheet_data(text)) == [
+        "1",
+        "2",
+        "1",
+        "3",
+    ]
+
+
 def test_a_format_code_is_escaped_as_an_attribute() -> None:
     found = styles(yup('S\t1\t1\t#\t1\tnumberformat=0.0" <kg>"'))
     assert 'formatCode="0.0&quot; &lt;kg&gt;&quot;"' in found

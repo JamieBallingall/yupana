@@ -13,3 +13,11 @@ Styles,10,2,1,1234.5
 Styles,11,1,2,A total
 Styles,11,2,1,2469.0
 Styles,13,1,2,Not bold nor italic
+Styles,15,1,2,A thin line above
+Styles,17,1,2,A medium line below
+Styles,19,1,2,A thick line on the left
+Styles,21,1,2,A double line on the right
+Styles,23,1,2,Dotted above and dashed below
+Styles,25,1,2,Red above and blue below
+Styles,27,1,2,A total
+Styles,27,2,1,2469.0

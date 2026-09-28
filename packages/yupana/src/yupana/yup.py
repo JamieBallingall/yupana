@@ -63,6 +63,8 @@ _NOT_IN_SHEET_NAME = ":\\/?*[]"
 _CELL_TYPES = ("=", "#", "$", "?", ".")
 _TYPES = (*_CELL_TYPES, "|", "-")
 _COLOR = re.compile(r"[0-9A-F]{6}")
+EDGES = ("top", "bottom", "left", "right")
+"""A cell's edges, in the order the border keys are listed."""
 _CELL_KEYS = (
     "numberformat",
     "indent",
@@ -71,6 +73,8 @@ _CELL_KEYS = (
     "underline",
     "fontcolor",
     "fill",
+    *(f"border{edge}" for edge in EDGES),
+    *(f"border{edge}color" for edge in EDGES),
 )
 _KEYS = {"|": ("columnwidth",), "-": ("rowheight",)}
 _HOME = {key: "a cell" for key in _CELL_KEYS} | {
@@ -114,6 +118,25 @@ class Underline(StrEnum):
     DOUBLE_ACCOUNTING = "doubleaccounting"
 
 
+class LineStyle(StrEnum):
+    """How a line along an edge of a cell is drawn, named as the border keys name it."""
+
+    THIN = "thin"
+    MEDIUM = "medium"
+    THICK = "thick"
+    DOUBLE = "double"
+    DOTTED = "dotted"
+    DASHED = "dashed"
+
+
+@dataclass(frozen=True, slots=True)
+class Border:
+    """A line along one edge of a cell. ``None`` is the app's automatic colour."""
+
+    style: LineStyle
+    color: str | None = None
+
+
 @dataclass(frozen=True, slots=True)
 class Format:
     """A cell's formats. ``None`` means the key is absent. A colour is ``RRGGBB``."""
@@ -125,6 +148,10 @@ class Format:
     underline: Underline | None = None
     font_color: str | None = None
     fill: str | None = None
+    border_top: Border | None = None
+    border_bottom: Border | None = None
+    border_left: Border | None = None
+    border_right: Border | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -454,6 +481,14 @@ def _cell_format(pairs: dict[str, str]) -> Result[Format, list[str]]:
                 problems.append(problem)
                 return None
 
+    def border(edge: str) -> Border | None:
+        key = f"border{edge}"
+        style = parsed(key, _choice(key, tuple(LineStyle)))
+        color = parsed(f"{key}color", _color(f"{key}color"))
+        if f"{key}color" in pairs and key not in pairs:
+            problems.append(f"{key}color needs {key}, the line it colours")
+        return None if style is None else Border(style, color)
+
     fmt = Format(
         number_format=parsed("numberformat", _number_format),
         indent=parsed("indent", _indent),
@@ -462,6 +497,10 @@ def _cell_format(pairs: dict[str, str]) -> Result[Format, list[str]]:
         underline=parsed("underline", _choice("underline", tuple(Underline))),
         font_color=parsed("fontcolor", _color("fontcolor")),
         fill=parsed("fill", _color("fill")),
+        border_top=border("top"),
+        border_bottom=border("bottom"),
+        border_left=border("left"),
+        border_right=border("right"),
     )
     return Err(problems) if problems else Ok(fmt)
 

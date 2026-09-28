@@ -5,10 +5,12 @@ from yupana.result import Err, Ok
 from yupana.yup import (
     PREAMBLE,
     Blank,
+    Border,
     Cell,
     Column,
     Format,
     Formula,
+    LineStyle,
     Logical,
     Number,
     Row,
@@ -386,6 +388,7 @@ def test_a_blank_cell_needs_a_format_and_nothing_in_it() -> None:
 
 A_COLOUR = "is a colour: six hexadecimal digits in upper case, such as FF0000"
 UNDERLINES = "single, double, singleaccounting or doubleaccounting"
+LINES = "thin, medium, thick, double, dotted or dashed"
 
 
 @pytest.mark.parametrize(
@@ -413,6 +416,12 @@ UNDERLINES = "single, double, singleaccounting or doubleaccounting"
         ("fontcolor=#FF0000", 'not "#FF0000"'),
         ("fill=FF000", f'fill {A_COLOUR}, not "FF000"'),
         ("fill=FF00000", 'not "FF00000"'),
+        ("bordertop=hair", f'bordertop is {LINES}, not "hair"'),
+        ("borderleft=Thin", f'borderleft is {LINES}, not "Thin"'),
+        ("bordertopcolor=FF0000", "bordertopcolor needs bordertop, the line it colours"),
+        ("borderright=thin|borderrightcolor=red", f'borderrightcolor {A_COLOUR}, not "red"'),
+        ("borderbottom=thin|borderbottom=thick", "the format key borderbottom appears twice"),
+        ("bordercolor=FF0000", 'unknown format key "bordercolor"'),
         ("fill=GG0000", 'not "GG0000"'),
     ],
 )  # fmt: skip
@@ -449,6 +458,20 @@ def test_every_bad_value_on_a_line_is_reported() -> None:
         ("underline=doubleaccounting", Format(underline=Underline.DOUBLE_ACCOUNTING)),
         ("fontcolor=0070C0|fill=DDEBF7", Format(font_color="0070C0", fill="DDEBF7")),
         ("fill=000000", Format(fill="000000")),
+        ("bordertop=thin", Format(border_top=Border(LineStyle.THIN))),
+        (
+            "borderbottom=double|borderbottomcolor=0070C0",
+            Format(border_bottom=Border(LineStyle.DOUBLE, "0070C0")),
+        ),
+        (
+            "borderleft=dotted|borderright=dashed|bordertop=medium|borderbottom=thick",
+            Format(
+                border_top=Border(LineStyle.MEDIUM),
+                border_bottom=Border(LineStyle.THICK),
+                border_left=Border(LineStyle.DOTTED),
+                border_right=Border(LineStyle.DASHED),
+            ),
+        ),
     ],
 )
 def test_a_format_is_accepted(fmt: str, expected: Format) -> None:

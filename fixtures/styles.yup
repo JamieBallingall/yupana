@@ -17,3 +17,17 @@ Styles	11	1	$	A total	bold=true
 Styles	11	2	=	B10*2	bold=true|underline=doubleaccounting|numberformat=#,##0.0
 Styles	12	2	.		fill=DDEBF7
 Styles	13	1	$	Not bold nor italic	bold=false|italic=false|fontcolor=000000
+Styles	15	1	$	A thin line above	
+Styles	15	2	.		bordertop=thin
+Styles	17	1	$	A medium line below	
+Styles	17	2	.		borderbottom=medium
+Styles	19	1	$	A thick line on the left	
+Styles	19	2	.		borderleft=thick
+Styles	21	1	$	A double line on the right	
+Styles	21	2	.		borderright=double
+Styles	23	1	$	Dotted above and dashed below	
+Styles	23	2	.		bordertop=dotted|borderbottom=dashed
+Styles	25	1	$	Red above and blue below	
+Styles	25	2	.		bordertop=thin|bordertopcolor=FF0000|borderbottom=double|borderbottomcolor=0070C0
+Styles	27	1	$	A total	bold=true|bordertop=thin|borderbottom=double
+Styles	27	2	=	B11	bold=true|bordertop=thin|borderbottom=double|numberformat=#,##0.0

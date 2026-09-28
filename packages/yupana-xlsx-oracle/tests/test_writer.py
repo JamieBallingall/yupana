@@ -134,7 +134,23 @@ def test_the_app_sizes_columns_and_rows_as_the_writer_says(session: Session) -> 
 def styles_shown(sheet: Any) -> dict[str, object]:
     """How the app shows each style in the ``styles`` fixture, by what it shows."""
     font = {row: sheet.Cells(row, 1).Font for row in range(1, 14)}
+
+    def line(row: int, edge: int) -> tuple[int, int]:
+        border = sheet.Cells(row, 2).Borders(edge)
+        return border.LineStyle, border.Weight
+
+    top, bottom, left, right = 8, 9, 7, 10
     return {
+        "thin top": line(15, top),
+        "medium bottom": line(17, bottom),
+        "thick left": line(19, left),
+        "double right": line(21, right),
+        "dotted top, dashed bottom": (line(23, top), line(23, bottom)),
+        "line colours": (
+            sheet.Cells(25, 2).Borders(top).Color,
+            sheet.Cells(25, 2).Borders(bottom).Color,
+        ),
+        "no line": sheet.Cells(15, 2).Borders(left).LineStyle,
         "bold": font[1].Bold,
         "italic": font[2].Italic,
         "bold and italic": (font[3].Bold, font[3].Italic),
@@ -157,7 +173,16 @@ def test_the_app_shows_each_style_as_the_writer_says(session: Session) -> None:
     workbook.Close(SaveChanges=False)
     # Underlines are the app's constants: single, double, and the two accounting ones.
     # A colour is an integer with red lowest, and an unfilled cell has no colour index.
+    # A line is the app's style and weight: continuous (1) thin (2), medium (-4138) or
+    # thick (4); double (-4119); dotted (-4118); dashed (-4115); none (-4142).
     assert found == {
+        "thin top": (1, 2),
+        "medium bottom": (1, -4138),
+        "thick left": (1, 4),
+        "double right": (-4119, 4),
+        "dotted top, dashed bottom": ((-4118, 2), (-4115, 2)),
+        "line colours": (bgr("FF0000"), bgr("0070C0")),
+        "no line": -4142,
         "bold": True,
         "italic": True,
         "bold and italic": (True, True),

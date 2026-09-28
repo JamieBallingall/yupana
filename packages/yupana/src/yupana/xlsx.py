@@ -25,6 +25,7 @@ from yupana.result import Err, Ok, Result
 from yupana.yup import (
     ESCAPE_SHAPE,
     Blank,
+    Border,
     Cell,
     Format,
     Formula,
@@ -141,6 +142,8 @@ def _where(cell: Cell | Blank) -> str:
 
 type _Font = tuple[bool, bool, Underline | None, str]
 """Bold, italic, the underline, and the colour."""
+type _Edges = tuple[Border | None, Border | None, Border | None, Border | None]
+"""The lines along a cell's left, right, top and bottom, the order a ``<border>`` needs."""
 type _Alignment = tuple[tuple[str, str], ...]
 """The ``<alignment>`` element's attributes, in the order they are written."""
 type _Key = tuple[int, int, int, int, _Alignment]
@@ -157,22 +160,31 @@ _UNDERLINE = {
 """Each underline's ``val`` in a font; ``None`` for the default, single."""
 _RESERVED_FILLS = 2
 """The fills every workbook starts with: none, and the gray pattern the app expects."""
+_NO_EDGES: _Edges = (None, None, None, None)
 
 
 @dataclass(frozen=True, slots=True)
 class _Styles:
     """What the cell styles a workbook uses are made of, each part numbered in order of
-    first use: number formats, fonts and fills, and the styles that combine them."""
+    first use: number formats, fonts, fills and borders, and the styles that combine
+    them."""
 
     custom: dict[str, int]
     fonts: dict[_Font, int]
     fills: dict[str, int]
+    borders: dict[_Edges, int]
     keys: dict[_Key, int]
 
 
 def _new_styles() -> _Styles:
-    """The styles of a workbook with nothing formatted: the default font and style."""
-    return _Styles(custom={}, fonts={_PLAIN: 0}, fills={}, keys={(0, 0, 0, 0, ()): 0})
+    """The styles of a workbook with nothing formatted: the defaults of each part."""
+    return _Styles(
+        custom={},
+        fonts={_PLAIN: 0},
+        fills={},
+        borders={_NO_EDGES: 0},
+        keys={(0, 0, 0, 0, ()): 0},
+    )
 
 
 def _alignment(fmt: Format) -> _Alignment:
@@ -201,7 +213,9 @@ def _style(fmt: Format, styles: _Styles) -> Result[int, str]:
     fill_id = 0
     if fmt.fill is not None:
         fill_id = styles.fills.setdefault(fmt.fill, _RESERVED_FILLS + len(styles.fills))
-    key = (number_format, font_id, fill_id, 0, _alignment(fmt))
+    edges = (fmt.border_left, fmt.border_right, fmt.border_top, fmt.border_bottom)
+    border_id = styles.borders.setdefault(edges, len(styles.borders))
+    key = (number_format, font_id, fill_id, border_id, _alignment(fmt))
     return Ok(styles.keys.setdefault(key, len(styles.keys)))
 
 
@@ -343,6 +357,23 @@ def _fill(color: str) -> str:
     )
 
 
+def _border(edges: _Edges) -> str:
+    """A ``<border>``: each edge, a line or empty, and no diagonal, as the app writes it.
+    A line without a colour of its own takes the app's automatic colour."""
+    written = ""
+    for side, edge in zip(("left", "right", "top", "bottom"), edges, strict=True):
+        if edge is None:
+            written += f"<{side}/>"
+            continue
+        color = (
+            '<color indexed="64"/>'
+            if edge.color is None
+            else f'<color rgb="FF{edge.color}"/>'
+        )
+        written += f'<{side} style="{edge.style.value}">{color}</{side}>'
+    return f"<border>{written}<diagonal/></border>"
+
+
 def _xf(key: _Key) -> str:
     """A ``<xf>`` in ``cellXfs``, flagging each part it applies, as the app does."""
     number_format, font, fill, border, alignment = key
@@ -375,6 +406,7 @@ def _styles_part(styles: _Styles) -> str:
         num_fmts = f'<numFmts count="{len(styles.custom)}">{entries}</numFmts>'
     fonts = "".join(_font(font) for font in styles.fonts)
     fills = "".join(_fill(color) for color in styles.fills)
+    borders = "".join(_border(edges) for edges in styles.borders)
     xfs = "".join(_xf(key) for key in styles.keys)
     return (
         f'<styleSheet xmlns="{MAIN}">{num_fmts}'
@@ -382,8 +414,7 @@ def _styles_part(styles: _Styles) -> str:
         f'<fills count="{_RESERVED_FILLS + len(styles.fills)}">'
         '<fill><patternFill patternType="none"/></fill>'
         f'<fill><patternFill patternType="gray125"/></fill>{fills}</fills>'
-        '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/>'
-        "</border></borders>"
+        f'<borders count="{len(styles.borders)}">{borders}</borders>'
         '<cellStyleXfs count="1">'
         '<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
         f'<cellXfs count="{len(styles.keys)}">{xfs}</cellXfs>'
