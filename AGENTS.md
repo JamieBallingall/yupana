@@ -4,10 +4,11 @@ Instructions for coding agents working in this repository. README.md is the intr
 
 ## The person you are working with
 
-Read HUMAN.md at the repository root if it exists. It describes the human you are working with
-and how they work, including whether and when you may commit or push. It is personal and is never
-committed. If there is no HUMAN.md, ask the human before committing, pushing, or doing anything
-else that is hard to undo.
+Read `../HUMAN.md`, in the directory that holds this repository and its sibling, if it exists.
+It describes the human you are working with and how they work, including whether and when you may
+commit or push. It is personal, and sits outside the repositories so that it is never committed.
+If there is no HUMAN.md, ask the human before committing, pushing, or doing anything else that is
+hard to undo.
 
 ## What this is
 
@@ -70,5 +71,6 @@ read the other one, but never change it from here.
   reader enforces exactly what it states.
 - `packages/yupana/values-csv.md` specifies the values CSV, an internal format for testing. It is
   kept out of `SPEC.md` so that the standard stays about `.yup` alone.
-- `plan/`, when present, is the working plan. It is never committed. A step in it is one commit.
+- `../plan/`, when present, is the working plan for both repositories. Like `../HUMAN.md`, it
+  sits outside them and is never committed. A step in it is one commit.
   Where the plan and the code disagree, the code wins, and the plan is updated.
