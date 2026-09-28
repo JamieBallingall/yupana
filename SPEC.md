@@ -29,14 +29,18 @@ In the examples below, `→` stands for a tab. Real tabs do not survive copying 
 ```text
 yup 0.0.1 Yupana Straight Line Spreadsheet Format
 sheet→row→col→cell→format
-Model→1→1→$Year→columnwidth=34
-Model→1→2→#2026→columnwidth=10|numberformat=0
-Model→2→1→$Revenue→
-Model→2→2→#1000→numberformat=#,##0.0;(#,##0.0)
-Model→3→1→$Growth→indent=1
-Model→3→2→#0.08→numberformat=0.0%
-Model→4→1→$Next year→
-Model→4→2→=B2*(1+B3)→numberformat=#,##0.0;(#,##0.0)
+
+yup 0.0.1 Yupana Straight Line Spreadsheet Format
+sheet → row → col → cell         → format
+Model →  1  →  1  → $Revenue     → columnwidth=20
+Model →  1  →  1  → $Year        → columnwidth=34
+Model →  1  →  2  → #2026      → columnwidth=10|numberformat=0
+Model →  2  →  1  → $Revenue     →
+Model →  2  →  2  → #1000      → numberformat=#,##0.0;(#,##0.0)
+Model →  3  →  1  → $Growth      → indent=1
+Model →  3  →  2  → #0.08        → numberformat=0.0%
+Model →  4  →  1  → $Next year   →
+Model →  4  →  2  → =B2*(1+B3)   → numberformat=#,##0.0;(#,##0.0)
 ```
 
 ### Characters
