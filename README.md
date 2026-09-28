@@ -16,14 +16,16 @@ opens without complaint.
 
 ## A `.yup` file
 
-A line naming the format and its version, then tab-separated lines with a header. Here `→`
-stands for a tab:
+A line naming the format and its version, then tab-separated lines with a header. Here each
+`→`, with the spaces around it, stands for a tab, so that the columns line up for reading. The
+file itself, with real tabs, is
+[`packages/yupana/tests/examples/readme.yup`](packages/yupana/tests/examples/readme.yup):
 
 ```text
 yup 0.0.1 Yupana Straight Line Spreadsheet Format
 sheet → row → col → cell         → format
 Model →  1  →  1  → $Revenue     → columnwidth=20
-Model →  1  →  2  → #1000      → columnwidth=10|numberformat=#,##0.0
+Model →  1  →  2  → #1000        → columnwidth=10|numberformat=#,##0.0
 Model →  2  →  1  → $Next year   → indent=1
 Model →  2  →  2  → =B1*(1+0.08) → numberformat=#,##0.0
 ```
