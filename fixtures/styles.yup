@@ -1,0 +1,19 @@
+yup 0.0.2 Yupana Straight Line Spreadsheet Format
+sheet	row	col	type	cell	format
+Styles	*	1	|		columnwidth=28
+Styles	*	2	|		columnwidth=14
+Styles	1	1	$	Bold	bold=true
+Styles	2	1	$	Italic	italic=true
+Styles	3	1	$	Bold and italic	bold=true|italic=true
+Styles	4	1	$	Underlined	underline=single
+Styles	5	1	$	Underlined twice	underline=double
+Styles	6	1	$	Accounting underline	underline=singleaccounting
+Styles	7	1	$	Accounting underline twice	underline=doubleaccounting
+Styles	8	1	$	Blue text	fontcolor=0070C0
+Styles	9	1	$	Pale blue fill	fill=DDEBF7
+Styles	10	1	$	An input	fontcolor=0000FF
+Styles	10	2	#	1234.5	fontcolor=0000FF|fill=FFF2CC|numberformat=#,##0.0
+Styles	11	1	$	A total	bold=true
+Styles	11	2	=	B10*2	bold=true|underline=doubleaccounting|numberformat=#,##0.0
+Styles	12	2	.		fill=DDEBF7
+Styles	13	1	$	Not bold nor italic	bold=false|italic=false|fontcolor=000000

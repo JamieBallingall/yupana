@@ -13,6 +13,7 @@ from yupana.yup import (
     Number,
     Row,
     Text,
+    Underline,
     Yup,
     read_yup,
 )
@@ -383,6 +384,9 @@ def test_a_blank_cell_needs_a_format_and_nothing_in_it() -> None:
 
 # Formats on a cell.
 
+A_COLOUR = "is a colour: six hexadecimal digits in upper case, such as FF0000"
+UNDERLINES = "single, double, singleaccounting or doubleaccounting"
+
 
 @pytest.mark.parametrize(
     ("fmt", "message"),
@@ -401,12 +405,29 @@ def test_a_blank_cell_needs_a_format_and_nothing_in_it() -> None:
         ("numberformat=0\x01", "cannot contain the character U+0001"),
         ("columnwidth=5", "the format key columnwidth is for a | line, not a # line"),
         ("rowheight=5", "the format key rowheight is for a - line, not a # line"),
+        ("bold=True", 'bold is true or false, not "True"'),
+        ("italic=1", 'italic is true or false, not "1"'),
+        ("underline=Double", f'underline is {UNDERLINES}, not "Double"'),
+        ("underline=none", 'not "none"'),
+        ("fontcolor=ff0000", f'fontcolor {A_COLOUR}, not "ff0000"'),
+        ("fontcolor=#FF0000", 'not "#FF0000"'),
+        ("fill=FF000", f'fill {A_COLOUR}, not "FF000"'),
+        ("fill=FF00000", 'not "FF00000"'),
+        ("fill=GG0000", 'not "GG0000"'),
     ],
-)
+)  # fmt: skip
 def test_a_format_is_refused(fmt: str, message: str) -> None:
     [error] = errors(yup(line(fmt=fmt)))
     assert error.startswith("line 3: ")
     assert message in error
+
+
+def test_every_bad_value_on_a_line_is_reported() -> None:
+    assert errors(yup(line(fmt="bold=yes|fill=red|indent=-1"))) == [
+        'line 3: indent must be a whole number from 0 to 250, not "-1"',
+        'line 3: bold is true or false, not "yes"',
+        f'line 3: fill {A_COLOUR}, not "red"',
+    ]
 
 
 @pytest.mark.parametrize(
@@ -420,6 +441,14 @@ def test_a_format_is_refused(fmt: str, message: str) -> None:
             Format(number_format="[>=100]0;0", indent=0),
         ),
         ("numberformat=a=b", Format(number_format="a=b")),
+        ("bold=true", Format(bold=True)),
+        ("bold=false|italic=true", Format(bold=False, italic=True)),
+        ("underline=single", Format(underline=Underline.SINGLE)),
+        ("underline=double", Format(underline=Underline.DOUBLE)),
+        ("underline=singleaccounting", Format(underline=Underline.SINGLE_ACCOUNTING)),
+        ("underline=doubleaccounting", Format(underline=Underline.DOUBLE_ACCOUNTING)),
+        ("fontcolor=0070C0|fill=DDEBF7", Format(font_color="0070C0", fill="DDEBF7")),
+        ("fill=000000", Format(fill="000000")),
     ],
 )
 def test_a_format_is_accepted(fmt: str, expected: Format) -> None:

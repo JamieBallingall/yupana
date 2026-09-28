@@ -3,20 +3,20 @@
 >>> text = (
 ...     PREAMBLE
 ...     + "Model\\t*\\t1\\t|\\t\\tcolumnwidth=20\\n"
-...     "Model\\t1\\t1\\t$\\tRevenue\\t\\n"
+...     "Model\\t1\\t1\\t$\\tRevenue\\tbold=true\\n"
 ...     "Model\\t1\\t2\\t#\\t1000\\tnumberformat=#,##0\\n"
 ...     "Model\\t2\\t2\\t=\\tB1*2\\t\\n"
-...     "Model\\t3\\t2\\t.\\t\\tindent=1\\n"
+...     "Model\\t3\\t2\\t.\\t\\tfill=DDEBF7\\n"
 ... )
 >>> yup = read_yup(text).unwrap()
 >>> yup.sheets
 ('Model',)
 >>> [cell.content for cell in yup.cells]
 [Text(value='Revenue'), Number(value=1000.0), Formula(text='=B1*2')]
->>> yup.cells[1].format
-Format(number_format='#,##0', indent=None)
->>> yup.columns, yup.blanks[0].format
-((Column(line=3, sheet='Model', col=1, width=20.0),), Format(number_format=None, indent=1))
+>>> yup.cells[0].format.bold, yup.cells[1].format.number_format
+(True, '#,##0')
+>>> yup.columns, yup.blanks[0].format.fill
+((Column(line=3, sheet='Model', col=1, width=20.0),), 'DDEBF7')
 
 A file with problems is refused with every one of them, each with its line:
 
@@ -32,6 +32,7 @@ import math
 import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from enum import StrEnum
 
 from yupana.result import Err, Ok, Result
 
@@ -61,7 +62,16 @@ ESCAPE_SHAPE = re.compile(r"_x[0-9A-Fa-f]{4}_")
 _NOT_IN_SHEET_NAME = ":\\/?*[]"
 _CELL_TYPES = ("=", "#", "$", "?", ".")
 _TYPES = (*_CELL_TYPES, "|", "-")
-_CELL_KEYS = ("numberformat", "indent")
+_COLOR = re.compile(r"[0-9A-F]{6}")
+_CELL_KEYS = (
+    "numberformat",
+    "indent",
+    "bold",
+    "italic",
+    "underline",
+    "fontcolor",
+    "fill",
+)
 _KEYS = {"|": ("columnwidth",), "-": ("rowheight",)}
 _HOME = {key: "a cell" for key in _CELL_KEYS} | {
     key: f"a {kind} line" for kind, keys in _KEYS.items() for key in keys
@@ -95,12 +105,26 @@ class Logical:
 type Content = Formula | Number | Text | Logical
 
 
+class Underline(StrEnum):
+    """How a cell's text is underlined, named as the ``underline`` key names it."""
+
+    SINGLE = "single"
+    DOUBLE = "double"
+    SINGLE_ACCOUNTING = "singleaccounting"
+    DOUBLE_ACCOUNTING = "doubleaccounting"
+
+
 @dataclass(frozen=True, slots=True)
 class Format:
-    """A cell's formats. ``None`` means the key is absent."""
+    """A cell's formats. ``None`` means the key is absent. A colour is ``RRGGBB``."""
 
     number_format: str | None = None
     indent: int | None = None
+    bold: bool | None = None
+    italic: bool | None = None
+    underline: Underline | None = None
+    font_color: str | None = None
+    fill: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -343,6 +367,47 @@ def _indent(text: str) -> Result[int, str]:
     )
 
 
+def _either(words: Iterable[str]) -> str:
+    """Words as a choice: ``a``, ``a or b``, ``a, b or c``."""
+    listed = list(words)
+    return (
+        listed[0] if len(listed) == 1 else f"{', '.join(listed[:-1])} or {listed[-1]}"
+    )
+
+
+def _flag(key: str) -> Callable[[str], Result[bool, str]]:
+    def parse(text: str) -> Result[bool, str]:
+        if text in ("true", "false"):
+            return Ok(text == "true")
+        return Err(f"{key} is true or false, not {quoted(text)}")
+
+    return parse
+
+
+def _color(key: str) -> Callable[[str], Result[str, str]]:
+    def parse(text: str) -> Result[str, str]:
+        if _COLOR.fullmatch(text):
+            return Ok(text)
+        return Err(
+            f"{key} is a colour: six hexadecimal digits in upper case, "
+            f"such as FF0000, not {quoted(text)}"
+        )
+
+    return parse
+
+
+def _choice[E: StrEnum](
+    key: str, options: tuple[E, ...]
+) -> Callable[[str], Result[E, str]]:
+    def parse(text: str) -> Result[E, str]:
+        for option in options:
+            if option.value == text:
+                return Ok(option)
+        return Err(f"{key} is {_either(o.value for o in options)}, not {quoted(text)}")
+
+    return parse
+
+
 def _size(key: str, text: str, largest: int) -> Result[float, str]:
     """A width or height: a number from 0 to ``largest``, in JSON's grammar."""
     if JSON_NUMBER.fullmatch(text) and 0 <= (size := float(text)) <= largest:
@@ -389,11 +454,16 @@ def _cell_format(pairs: dict[str, str]) -> Result[Format, list[str]]:
                 problems.append(problem)
                 return None
 
-    number_format = parsed("numberformat", _number_format)
-    indent = parsed("indent", _indent)
-    if problems:
-        return Err(problems)
-    return Ok(Format(number_format=number_format, indent=indent))
+    fmt = Format(
+        number_format=parsed("numberformat", _number_format),
+        indent=parsed("indent", _indent),
+        bold=parsed("bold", _flag("bold")),
+        italic=parsed("italic", _flag("italic")),
+        underline=parsed("underline", _choice("underline", tuple(Underline))),
+        font_color=parsed("fontcolor", _color("fontcolor")),
+        fill=parsed("fill", _color("fill")),
+    )
+    return Err(problems) if problems else Ok(fmt)
 
 
 @dataclass(frozen=True, slots=True)

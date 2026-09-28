@@ -25,12 +25,14 @@ from yupana.yup import (
     Cell,
     Column,
     Content,
+    Format,
     Formula,
     Line,
     Logical,
     Number,
     Row,
     Text,
+    Underline,
     Yup,
     utf16_length,
 )
@@ -46,6 +48,13 @@ from yupana_xlsx_oracle.errors import (
 from yupana_xlsx_oracle.session import Session, com_error
 
 _XLSX = 51
+# The app's constants for each underline.
+_UNDERLINES = {
+    Underline.SINGLE: 2,
+    Underline.DOUBLE: -4119,
+    Underline.SINGLE_ACCOUNTING: 4,
+    Underline.DOUBLE_ACCOUNTING: 5,
+}
 
 
 def _rejected(line: Line, message: str) -> Rejected:
@@ -106,6 +115,58 @@ def _attempt(
     return None
 
 
+def bgr(color: str) -> int:
+    """A colour as the app's object model takes it: an integer, with red lowest.
+
+    >>> hex(bgr("0070C0"))
+    '0xc07000'
+    """
+    return int(color[4:6] + color[2:4] + color[0:2], 16)
+
+
+def _set(owner: Callable[[], Any], name: str, value: object) -> Callable[[], None]:
+    """A step that sets one property of what ``owner`` fetches, fetched in the step, so
+    that the app's answer to either comes back from the step."""
+
+    def step() -> None:
+        setattr(owner(), name, value)
+
+    return step
+
+
+def _formats(target: Any, fmt: Format) -> list[tuple[str, Callable[[], None]]]:
+    """A step for each key of a cell's format, each named for a rejection."""
+
+    def cell() -> Any:
+        return target
+
+    def font() -> Any:
+        return target.Font
+
+    def interior() -> Any:
+        return target.Interior
+
+    settings: list[tuple[str, Callable[[], Any], str, object]] = []
+    if fmt.number_format is not None:
+        what = f"the number format {fmt.number_format!r}"
+        settings.append((what, cell, "NumberFormat", fmt.number_format))
+    if fmt.indent is not None:
+        settings.append((f"the indent {fmt.indent}", cell, "IndentLevel", fmt.indent))
+    if fmt.bold is not None:
+        settings.append(("bold", font, "Bold", fmt.bold))
+    if fmt.italic is not None:
+        settings.append(("italic", font, "Italic", fmt.italic))
+    if fmt.underline is not None:
+        what = f"the underline {fmt.underline.value}"
+        settings.append((what, font, "Underline", _UNDERLINES[fmt.underline]))
+    if fmt.font_color is not None:
+        what = f"the font colour {fmt.font_color}"
+        settings.append((what, font, "Color", bgr(fmt.font_color)))
+    if fmt.fill is not None:
+        settings.append((f"the fill {fmt.fill}", interior, "Color", bgr(fmt.fill)))
+    return [(what, _set(owner, name, value)) for what, owner, name, value in settings]
+
+
 def _write_cell(session: Session, sheet: Any, cell: Cell | Blank) -> list[Rejected]:
     target = sheet.Cells(cell.row, cell.col)
     steps: list[tuple[str, Callable[[], None]]] = []
@@ -114,21 +175,7 @@ def _write_cell(session: Session, sheet: Any, cell: Cell | Blank) -> list[Reject
         if isinstance(content, Text) and text_to_type(content.value).is_err():
             return [_rejected(cell, text_to_type(content.value).unwrap_err())]
         steps.append(("the cell's contents", lambda: _write_content(target, content)))
-    fmt = cell.format
-    if fmt.number_format is not None:
-        code = fmt.number_format
-
-        def number_format() -> None:
-            target.NumberFormat = code
-
-        steps.append((f"the number format {code!r}", number_format))
-    if fmt.indent is not None:
-        indent = fmt.indent
-
-        def indent_level() -> None:
-            target.IndentLevel = indent
-
-        steps.append((f"the indent {indent}", indent_level))
+    steps += _formats(target, cell.format)
     found = (_attempt(session, cell, what, step) for what, step in steps)
     return [rejected for rejected in found if rejected is not None]
 

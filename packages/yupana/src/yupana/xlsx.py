@@ -31,6 +31,7 @@ from yupana.yup import (
     Logical,
     Number,
     Text,
+    Underline,
     Yup,
     quoted,
 )
@@ -138,16 +139,51 @@ def _where(cell: Cell | Blank) -> str:
     return f"sheet {quoted(cell.sheet)}, row {cell.row}, col {cell.col}"
 
 
+type _Font = tuple[bool, bool, Underline | None, str]
+"""Bold, italic, the underline, and the colour."""
+type _Alignment = tuple[tuple[str, str], ...]
+"""The ``<alignment>`` element's attributes, in the order they are written."""
+type _Key = tuple[int, int, int, int, _Alignment]
+"""A cell style: its number format, font, fill and border, and its alignment."""
+
+_BLACK = "000000"
+_PLAIN: _Font = (False, False, None, _BLACK)
+_UNDERLINE = {
+    Underline.SINGLE: None,
+    Underline.DOUBLE: "double",
+    Underline.SINGLE_ACCOUNTING: "singleAccounting",
+    Underline.DOUBLE_ACCOUNTING: "doubleAccounting",
+}
+"""Each underline's ``val`` in a font; ``None`` for the default, single."""
+_RESERVED_FILLS = 2
+"""The fills every workbook starts with: none, and the gray pattern the app expects."""
+
+
 @dataclass(frozen=True, slots=True)
 class _Styles:
-    """The number formats and cell styles a workbook uses, in order of first use."""
+    """What the cell styles a workbook uses are made of, each part numbered in order of
+    first use: number formats, fonts and fills, and the styles that combine them."""
 
     custom: dict[str, int]
-    keys: dict[tuple[int, int], int]
+    fonts: dict[_Font, int]
+    fills: dict[str, int]
+    keys: dict[_Key, int]
+
+
+def _new_styles() -> _Styles:
+    """The styles of a workbook with nothing formatted: the default font and style."""
+    return _Styles(custom={}, fonts={_PLAIN: 0}, fills={}, keys={(0, 0, 0, 0, ()): 0})
+
+
+def _alignment(fmt: Format) -> _Alignment:
+    """An indent, left-aligned as the app aligns an indented cell."""
+    if not fmt.indent:
+        return ()
+    return (("horizontal", "left"), ("indent", str(fmt.indent)))
 
 
 def _style(fmt: Format, styles: _Styles) -> Result[int, str]:
-    """A format's index in ``cellXfs``, allocating its number format and style if new."""
+    """A format's index in ``cellXfs``, allocating each part and the style if new."""
     number_format = 0
     if fmt.number_format is not None:
         match number_format_id(fmt.number_format, styles.custom):
@@ -155,7 +191,17 @@ def _style(fmt: Format, styles: _Styles) -> Result[int, str]:
                 return Err(reason)
             case Ok(found):
                 number_format = found
-    key = (number_format, fmt.indent or 0)
+    font: _Font = (
+        bool(fmt.bold),
+        bool(fmt.italic),
+        fmt.underline,
+        fmt.font_color or _BLACK,
+    )
+    font_id = styles.fonts.setdefault(font, len(styles.fonts))
+    fill_id = 0
+    if fmt.fill is not None:
+        fill_id = styles.fills.setdefault(fmt.fill, _RESERVED_FILLS + len(styles.fills))
+    key = (number_format, font_id, fill_id, 0, _alignment(fmt))
     return Ok(styles.keys.setdefault(key, len(styles.keys)))
 
 
@@ -277,6 +323,48 @@ def _worksheet(sheet: _Sheet, first: bool) -> str:
     )
 
 
+def _font(font: _Font) -> str:
+    """A ``<font>``: the default font, with its emphasis and colour, as the app writes it."""
+    bold, italic, underline, color = font
+    emphasis = ("<b/>" if bold else "") + ("<i/>" if italic else "")
+    if underline is not None:
+        value = _UNDERLINE[underline]
+        emphasis += "<u/>" if value is None else f'<u val="{value}"/>'
+    return (
+        f'<font>{emphasis}<sz val="11"/><color rgb="FF{color}"/>'
+        '<name val="Aptos Narrow"/><family val="2"/></font>'
+    )
+
+
+def _fill(color: str) -> str:
+    return (
+        f'<fill><patternFill patternType="solid"><fgColor rgb="FF{color}"/>'
+        '<bgColor indexed="64"/></patternFill></fill>'
+    )
+
+
+def _xf(key: _Key) -> str:
+    """A ``<xf>`` in ``cellXfs``, flagging each part it applies, as the app does."""
+    number_format, font, fill, border, alignment = key
+    attributes = (
+        f'numFmtId="{number_format}" fontId="{font}" fillId="{fill}" '
+        f'borderId="{border}" xfId="0"'
+    )
+    for part, applied in (
+        ("NumberFormat", number_format),
+        ("Font", font),
+        ("Fill", fill),
+        ("Border", border),
+        ("Alignment", alignment),
+    ):
+        if applied:
+            attributes += f' apply{part}="1"'
+    if not alignment:
+        return f"<xf {attributes}/>"
+    aligned = " ".join(f'{name}="{value}"' for name, value in alignment)
+    return f"<xf {attributes}><alignment {aligned}/></xf>"
+
+
 def _styles_part(styles: _Styles) -> str:
     num_fmts = ""
     if styles.custom:
@@ -285,31 +373,20 @@ def _styles_part(styles: _Styles) -> str:
             for code, number in styles.custom.items()
         )
         num_fmts = f'<numFmts count="{len(styles.custom)}">{entries}</numFmts>'
-    xfs = []
-    for number_format, indent in styles.keys:
-        attributes = (
-            f'numFmtId="{number_format}" fontId="0" fillId="0" borderId="0" xfId="0"'
-        )
-        if number_format:
-            attributes += ' applyNumberFormat="1"'
-        if indent:
-            xfs.append(
-                f'<xf {attributes} applyAlignment="1">'
-                f'<alignment horizontal="left" indent="{indent}"/></xf>'
-            )
-        else:
-            xfs.append(f"<xf {attributes}/>")
+    fonts = "".join(_font(font) for font in styles.fonts)
+    fills = "".join(_fill(color) for color in styles.fills)
+    xfs = "".join(_xf(key) for key in styles.keys)
     return (
         f'<styleSheet xmlns="{MAIN}">{num_fmts}'
-        '<fonts count="1"><font><sz val="11"/><color rgb="FF000000"/>'
-        '<name val="Aptos Narrow"/><family val="2"/></font></fonts>'
-        '<fills count="2"><fill><patternFill patternType="none"/></fill>'
-        '<fill><patternFill patternType="gray125"/></fill></fills>'
+        f'<fonts count="{len(styles.fonts)}">{fonts}</fonts>'
+        f'<fills count="{_RESERVED_FILLS + len(styles.fills)}">'
+        '<fill><patternFill patternType="none"/></fill>'
+        f'<fill><patternFill patternType="gray125"/></fill>{fills}</fills>'
         '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/>'
         "</border></borders>"
         '<cellStyleXfs count="1">'
         '<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-        f'<cellXfs count="{len(xfs)}">{"".join(xfs)}</cellXfs>'
+        f'<cellXfs count="{len(styles.keys)}">{xfs}</cellXfs>'
         '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/>'
         "</cellStyles></styleSheet>"
     )
@@ -349,7 +426,7 @@ def write_xlsx(yup: Yup) -> Result[bytes, tuple[WriteError, ...]]:
     The writer relies on the reader's checks, so it takes a ``Yup`` that came from
     ``read_yup``. Anything that can only go wrong through a bug here raises.
     """
-    styles = _Styles(custom={}, keys={(0, 0): 0})
+    styles = _new_styles()
     strings: dict[str, int] = {}
     sheets = {name: _Sheet(cells={}, widths={}, heights={}) for name in yup.sheets}
     errors: list[WriteError] = []

@@ -103,6 +103,13 @@ On a cell:
 |---|---|---|
 | `numberformat` | a format code, containing no `\|` | The cell's number format. The reader does not judge the code; the xlsx writer does |
 | `indent` | an integer from 0 to 250, written as `row` is (or `0`) | The indent level of the cell's contents |
+| `bold` | `true` or `false` | Whether the text is bold |
+| `italic` | `true` or `false` | Whether the text is italic |
+| `underline` | `single`, `double`, `singleaccounting` or `doubleaccounting` | How the text is underlined. The accounting underlines sit lower, and run the width of the cell for a text |
+| `fontcolor` | a colour | The colour of the text |
+| `fill` | a colour | The cell's background, filled solid |
+
+A **colour** is six hexadecimal digits in upper case, `RRGGBB`: `FF0000` is red, and `DDEBF7` a pale blue. A cell without `fontcolor` has black text, and one without `fill` no fill.
 
 On a column (`|`) or a row (`-`):
 

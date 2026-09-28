@@ -346,6 +346,69 @@ def test_a_style_is_a_number_format_and_indent_allocated_in_order_of_first_use()
     )
 
 
+def font(emphasis: str = "", color: str = "000000") -> str:
+    return (
+        f'<font>{emphasis}<sz val="11"/><color rgb="FF{color}"/>'
+        '<name val="Aptos Narrow"/><family val="2"/></font>'
+    )
+
+
+def xf(font: int = 0, fill: int = 0, applied: str = "") -> str:
+    return (
+        f'<xf numFmtId="0" fontId="{font}" fillId="{fill}" borderId="0" xfId="0"'
+        f"{applied}/>"
+    )
+
+
+def test_fonts_and_fills_are_shared_and_allocated_in_order_of_first_use() -> None:
+    text = yup(
+        "S\t1\t1\t$\ta\tbold=true",
+        "S\t2\t1\t$\tb\titalic=true|bold=true|fontcolor=0070C0",
+        "S\t3\t1\t$\tc\tunderline=single",
+        "S\t4\t1\t$\td\tunderline=doubleaccounting|fill=DDEBF7",
+        "S\t5\t1\t.\t\tfill=DDEBF7",
+        "S\t6\t1\t$\te\tbold=true|fill=FFFF00",
+        "S\t7\t1\t$\tf\tbold=false|italic=false|fontcolor=000000",
+        "S\t8\t1\t$\tg\tunderline=double",
+        "S\t9\t1\t$\th\tunderline=singleaccounting",
+    )
+    found = styles(text)
+    assert matched(r"<fonts[^>]*>(.*)</fonts>", found) == (
+        font()
+        + font("<b/>")
+        + font("<b/><i/>", "0070C0")
+        + font("<u/>")
+        + font('<u val="doubleAccounting"/>')
+        + font('<u val="double"/>')
+        + font('<u val="singleAccounting"/>')
+    )
+    assert '<fonts count="7">' in found
+    assert matched(r"<fills[^>]*>(.*)</fills>", found) == (
+        '<fill><patternFill patternType="none"/></fill>'
+        '<fill><patternFill patternType="gray125"/></fill>'
+        '<fill><patternFill patternType="solid"><fgColor rgb="FFDDEBF7"/>'
+        '<bgColor indexed="64"/></patternFill></fill>'
+        '<fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/>'
+        '<bgColor indexed="64"/></patternFill></fill>'
+    )
+    assert '<fills count="4">' in found
+    font_only, both = ' applyFont="1"', ' applyFont="1" applyFill="1"'
+    assert matched(r"<cellXfs[^>]*>(.*)</cellXfs>", found) == (
+        xf()
+        + xf(1, 0, font_only)
+        + xf(2, 0, font_only)
+        + xf(3, 0, font_only)
+        + xf(4, 2, both)
+        + xf(0, 2, ' applyFill="1"')
+        + xf(1, 3, both)
+        + xf(5, 0, font_only)
+        + xf(6, 0, font_only)
+    )
+    assert re.findall(r'<c r="A\d+"(?: s="(\d+)")?', sheet_data(text)) == [
+        "1", "2", "3", "4", "5", "6", "", "7", "8",
+    ]  # fmt: skip
+
+
 def test_a_format_code_is_escaped_as_an_attribute() -> None:
     found = styles(yup('S\t1\t1\t#\t1\tnumberformat=0.0" <kg>"'))
     assert 'formatCode="0.0&quot; &lt;kg&gt;&quot;"' in found

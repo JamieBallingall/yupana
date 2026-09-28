@@ -1,0 +1,15 @@
+sheet,row,col,type,value
+Styles,1,1,2,Bold
+Styles,2,1,2,Italic
+Styles,3,1,2,Bold and italic
+Styles,4,1,2,Underlined
+Styles,5,1,2,Underlined twice
+Styles,6,1,2,Accounting underline
+Styles,7,1,2,Accounting underline twice
+Styles,8,1,2,Blue text
+Styles,9,1,2,Pale blue fill
+Styles,10,1,2,An input
+Styles,10,2,1,1234.5
+Styles,11,1,2,A total
+Styles,11,2,1,2469.0
+Styles,13,1,2,Not bold nor italic

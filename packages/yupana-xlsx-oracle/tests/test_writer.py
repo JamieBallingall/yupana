@@ -1,10 +1,12 @@
-"""The xlsx writer against the app: every workbook it writes opens, and computes to the
-values the app computed for the same ``.yup`` file."""
+"""The xlsx writer against the app: every workbook it writes opens, computes to the
+values the app computed for the same ``.yup`` file, and shows its formats as the file
+gives them."""
 
 import io
 import zipfile
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from yupana.result import Err
@@ -14,7 +16,7 @@ from yupana.yup import PREAMBLE, read_yup
 from yupana_xlsx_oracle.compare import compare
 from yupana_xlsx_oracle.errors import Refused
 from yupana_xlsx_oracle.session import Session
-from yupana_xlsx_oracle.workbook import build, read
+from yupana_xlsx_oracle.workbook import bgr, build, read
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = ROOT / "fixtures"
@@ -126,6 +128,45 @@ def test_the_app_sizes_columns_and_rows_as_the_writer_says(session: Session) -> 
         "row 100": 18.0,
         "other sheet, column B": pytest.approx(4.5, abs=1 / 7),
         "other sheet, row 2": 30.0,
+    }
+
+
+def styles_shown(sheet: Any) -> dict[str, object]:
+    """How the app shows each style in the ``styles`` fixture, by what it shows."""
+    font = {row: sheet.Cells(row, 1).Font for row in range(1, 14)}
+    return {
+        "bold": font[1].Bold,
+        "italic": font[2].Italic,
+        "bold and italic": (font[3].Bold, font[3].Italic),
+        "underlines": [font[row].Underline for row in (4, 5, 6, 7)],
+        "font colour": font[8].Color,
+        "fill": sheet.Cells(9, 1).Interior.Color,
+        "a filled blank cell": sheet.Cells(12, 2).Interior.Color,
+        "plain": (font[13].Bold, font[13].Italic, font[13].Color),
+        "unfilled": sheet.Cells(13, 1).Interior.ColorIndex,
+    }
+
+
+@pytest.mark.app
+def test_the_app_shows_each_style_as_the_writer_says(session: Session) -> None:
+    path = TARGET / "styles-read-back.xlsx"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_xlsx_file(read_yup(fixture("styles")).unwrap(), path).unwrap()
+    workbook = session.app.Workbooks.Open(str(path), UpdateLinks=0, ReadOnly=True)
+    found = styles_shown(workbook.Worksheets(1))
+    workbook.Close(SaveChanges=False)
+    # Underlines are the app's constants: single, double, and the two accounting ones.
+    # A colour is an integer with red lowest, and an unfilled cell has no colour index.
+    assert found == {
+        "bold": True,
+        "italic": True,
+        "bold and italic": (True, True),
+        "underlines": [2, -4119, 4, 5],
+        "font colour": bgr("0070C0"),
+        "fill": bgr("DDEBF7"),
+        "a filled blank cell": bgr("DDEBF7"),
+        "plain": (False, False, 0),
+        "unfilled": -4142,
     }
 
 
