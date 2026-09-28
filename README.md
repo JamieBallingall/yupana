@@ -80,7 +80,7 @@ values for the writer's workbook must equal its values for the `.yup` file, exac
 ## Install from source
 
 ```bash
-git clone <this repository> && cd yupana
+git clone https://github.com/JamieBallingall/yupana.git && cd yupana
 uv sync
 uv run pytest
 ```
