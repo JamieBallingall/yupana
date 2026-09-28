@@ -21,11 +21,11 @@ stands for a tab:
 
 ```text
 yup 0.0.1 Yupana Straight Line Spreadsheet Format
-sheet→row→col→cell→format
-Model→1→1→$Revenue→columnwidth=20
-Model→1→2→#1000→columnwidth=10|numberformat=#,##0.0
-Model→2→1→$Next year→indent=1
-Model→2→2→=B1*(1+0.08)→numberformat=#,##0.0
+sheet → row → col → cell         → format
+Model →  1  →  1  → $Revenue     → columnwidth=20
+Model →  1  →  2  → #1000      → columnwidth=10|numberformat=#,##0.0
+Model →  2  →  1  → $Next year   → indent=1
+Model →  2  →  2  → =B1*(1+0.08) → numberformat=#,##0.0
 ```
 
 A cell starts with `=` for a formula, `#` for a number, `$` for text, or `?` for `TRUE` or
@@ -87,5 +87,5 @@ On a machine without the app, the tests that need it are skipped.
 
 ## The name
 
-A yupana is the Inca counting board: a grid of cells for calculating. The word is Quechua, from
+A yupana is an Inca counting board: a grid of cells for calculating. The word is Quechua, from
 *yupay*, "to count". See [Yupana](https://en.wikipedia.org/wiki/Yupana).
