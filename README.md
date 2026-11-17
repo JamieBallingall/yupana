@@ -41,6 +41,16 @@ things silently or bury the user in warnings.
 
 ## Trying it
 
+The quickest way needs nothing installed: the page at
+[jamieballingall.github.io/yupana](https://jamieballingall.github.io/yupana/) is the whole tool,
+running in the browser, and works offline once saved. Each
+[release](https://github.com/JamieBallingall/yupana/releases/latest) has the page, `yup.html`,
+and the tool as one JavaScript file, `yup.mjs`, with its types, `yup.d.ts`, beside the source.
+The latest of each is always at the same address, such as
+`https://github.com/JamieBallingall/yupana/releases/latest/download/yup.mjs`.
+
+From the source, with Rust installed:
+
     cargo run -p yup-cli -- build examples/forecast.yup -o target/forecast.xlsx
     cargo run -p yup-cli -- check examples/segments.yup
     cargo run -p yup-cli -- show place examples/segments.yup
@@ -633,6 +643,14 @@ is provisional. [docs/language.md](docs/language.md) describes 0.2 as it is buil
   will be built, and on Windows, where most of the work is done; and with Node 18, the oldest
   runtime the docs promise, as well as the current one. It uses only GitHub's own actions and
   installs the toolchain that `rust-toolchain.toml` pins, so CI and a local build agree.
+- **Releases** (decided 2026-11-17). Pushing a tag such as `v0.3.0` runs
+  `.github/workflows/release.yml`: the checks of CI again, then a check that the tag names the
+  version in `Cargo.toml`, which the bundle reports as its own, then a GitHub release with
+  `yup.mjs`, `yup.d.ts` and `yup.html` as its files, and the same files on the project's GitHub
+  Pages site, with the page as its front page. GitHub adds the source to every release. Native
+  binaries and a Python package are left out until someone needs them: Python's standard
+  library cannot run WebAssembly, so a Python package would need a dependency or a native build
+  for each platform. A release's tag is now the only place the language's version is written.
 
 ## The range model
 

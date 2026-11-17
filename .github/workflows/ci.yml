@@ -1,6 +1,7 @@
 # The five checks that AGENTS.md asks of every commit, run on every push to main and every pull
-# request. Windows is where the project is mostly written and Linux where releases will be
-# built; Node 18 is the oldest runtime the docs promise, and 24 the current one.
+# request, and before every release. Windows is where the project is mostly written and Linux
+# where releases are built; Node 18 is the oldest runtime the docs promise, and 24 the current
+# one.
 
 name: CI
 
@@ -8,6 +9,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
