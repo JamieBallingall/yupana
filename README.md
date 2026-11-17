@@ -628,6 +628,11 @@ is provisional. [docs/language.md](docs/language.md) describes 0.2 as it is buil
   hand. A part that DEFLATE would make no smaller, which happens only to a part of a few bytes,
   is stored. The level is fixed and `Cargo.lock` pins the library, so the same file still gives
   the same bytes, natively and in WebAssembly alike.
+- **Continuous integration** (decided 2026-11-17). `.github/workflows/ci.yml` runs the five
+  checks of AGENTS.md on every push to main and every pull request: on Linux, where releases
+  will be built, and on Windows, where most of the work is done; and with Node 18, the oldest
+  runtime the docs promise, as well as the current one. It uses only GitHub's own actions and
+  installs the toolchain that `rust-toolchain.toml` pins, so CI and a local build agree.
 
 ## The range model
 

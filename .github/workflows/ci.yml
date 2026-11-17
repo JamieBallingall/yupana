@@ -1,0 +1,62 @@
+# The five checks that AGENTS.md asks of every commit, run on every push to main and every pull
+# request. Windows is where the project is mostly written and Linux where releases will be
+# built; Node 18 is the oldest runtime the docs promise, and 24 the current one.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or pull request makes an older run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: ${{ matrix.os }}, Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node: 24
+          - os: ubuntu-latest
+            node: 18
+          - os: windows-latest
+            node: 24
+    steps:
+      - uses: actions/checkout@v5
+
+      # Installs the toolchain, components and target that rust-toolchain.toml pins, leaving the
+      # runner's own rustup as it is.
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install --no-self-update
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Lint
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+      - name: Bundle
+        run: cargo run -p yup-bundle
+
+      - name: Test the bundle
+        run: node --test js/yup.test.mjs

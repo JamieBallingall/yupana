@@ -38,7 +38,8 @@ into an xlsx workbook, natively and as WebAssembly.
 
 All five are clean before every commit. The bundler builds the core for `wasm32-unknown-unknown`
 and writes `target/yup.mjs`, which the Node tests, on Node 18 or later, check against the
-native tool.
+native tool. CI runs all five on Linux and Windows for every push to main and every pull
+request.
 
 ## Style
 
