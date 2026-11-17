@@ -231,7 +231,8 @@ this: an entry it replaced says so, in italics, and the sections on 0.2 stand.
 - **Number formats** are checked conservatively before they reach the workbook; literal text in a
   format goes in double quotes. *0.2 puts the format code itself in single quotes.*
 - **The zip** stores its parts without compression and with a fixed timestamp, so the same file
-  always gives the same bytes (questions 9 and 23).
+  always gives the same bytes (questions 9 and 23). *Replaced 2026-11-17: the parts are
+  compressed; see [Built for 0.2](#built-for-02).*
 - **Unnamed unknown sizes** are called after the binding that introduced them, such as `year_n`.
 
 ## Decided for 0.2
@@ -619,6 +620,14 @@ is provisional. [docs/language.md](docs/language.md) describes 0.2 as it is buil
 - **Error messages** name what to write instead where the mistake is a habit from the
   spreadsheet app: `f(a, b)`, `SUM(x)`, a cell such as `B2` in a formula, `true` for `True`,
   `Input` for `Value`, and the statements of 0.1.
+- **A compressed zip** (decided 2026-11-17). Each part is compressed with DEFLATE, the one
+  method besides storing that ECMA-376 Part 2 allows (Annex C), which makes a workbook about
+  two-fifths of its stored size. The DEFLATE step is `miniz_oxide`, a pure Rust library with
+  no unsafe code that builds into the same WebAssembly module, under MIT, Zlib or Apache-2.0;
+  writing DEFLATE by hand would be a real chunk of code. The zip around it is still written by
+  hand. A part that DEFLATE would make no smaller, which happens only to a part of a few bytes,
+  is stored. The level is fixed and `Cargo.lock` pins the library, so the same file still gives
+  the same bytes, natively and in WebAssembly alike.
 
 ## The range model
 
@@ -984,7 +993,8 @@ Where 0.1 or 0.2 gives an answer, it follows in italics; [Built for 0.1](#built-
    readers. Opening files in the spreadsheet app itself is a check made outside this repository.
    *0.1: the tests check that every part is well formed and listed, and that the zip reads back.*
 9. **Dependencies:** `wasm-bindgen` for the web, and whatever the MCP server needs. *0.1 and 0.2:
-   none; the zip is stored, with its own CRC-32.*
+   none; the zip is stored, with its own CRC-32. From 2026-11-17: `miniz_oxide` compresses the
+   zip's parts, and the zip is still written by hand; the web needs no binding library.*
 10. **The MCP server's tools:** check a file, print any step's `.yup`, write the xlsx.
 11. **The file:** keep the `.yup` extension? Either way, the first line identifies the version, so
     each reader refuses the other format's files. *0.1: `.yup`, and the first line is `yup 0.1`.

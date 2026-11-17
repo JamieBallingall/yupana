@@ -58,7 +58,7 @@ pub fn package(workbook: &Workbook) -> Vec<u8> {
         .into_iter()
         .map(|(name, xml)| (name, xml.into_bytes()))
         .collect();
-    zip::store(&parts)
+    zip::write(&parts)
 }
 
 /// The workbook's parts, each a path in the package and its XML.
