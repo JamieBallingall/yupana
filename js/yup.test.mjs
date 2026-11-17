@@ -50,7 +50,7 @@ test("every example builds to the same bytes as the native tool", async () => {
 });
 
 test("the program prints what the native tool prints, and exits the same way", () => {
-  const wrong = "yup 0.2\nworkbook : Workbook\nworkbook = { sheets = [main] }\nmain : Sheet\n\
+  const wrong = "workbook : Workbook\nworkbook = { sheets = [main] }\nmain : Sheet\n\
 main = { name = 'Main' }\nx : Formula at main $B$2\nx = y + 1\n";
   const cases = [
     { args: ["check", "-"], stdin: wrong },
@@ -69,31 +69,31 @@ main = { name = 'Main' }\nx : Formula at main $B$2\nx = y + 1\n";
     assert.equal(found.stderr, expected.stderr, `${what}: the messages`);
     assert.ok(found.stdout.equals(expected.stdout), `${what}: the output`);
   }
-  assert.match(bundled(["check", "-"], wrong).stderr, /^<stdin>:7:5: error: unknown name `y`/);
+  assert.match(bundled(["check", "-"], wrong).stderr, /^<stdin>:6:5: error: unknown name `y`/);
 });
 
 test("an input file that cannot be read is reported where the source names it", () => {
-  const source = "yup 0.2\nworkbook : Workbook\nworkbook = { sheets = [main] }\nmain : Sheet\n\
+  const source = "workbook : Workbook\nworkbook = { sheets = [main] }\nmain : Sheet\n\
 main = { name = 'Main' }\nt : Value at main $B$2\nt = csv \"nowhere.csv\"\n";
   const found = bundled(["check", "-"], source);
   assert.equal(found.code, 1);
-  assert.match(found.stderr, /^<stdin>:7:9: error: cannot read nowhere\.csv: /);
+  assert.match(found.stderr, /^<stdin>:6:9: error: cannot read nowhere\.csv: /);
 });
 
 test("the library gives problems as data", async () => {
-  const source = "yup 0.2\nx : Formula at main $B$2\nx = 1 +\n";
+  const source = "x : Formula at main $B$2\nx = 1 +\n";
   await assert.rejects(yup.build(source), (error) => {
     assert.ok(error instanceof yup.YupError);
     assert.deepEqual(error.diagnostics, [
       {
         severity: "error",
         file: null,
-        line: 3,
+        line: 2,
         column: 8,
         message: "expected a value, found the end of the line",
       },
     ]);
-    assert.equal(error.message, "3:8: error: expected a value, found the end of the line");
+    assert.equal(error.message, "2:8: error: expected a value, found the end of the line");
     return true;
   });
   await assert.rejects(yup.show(source, "nowhere"), RangeError);
@@ -102,7 +102,6 @@ test("the library gives problems as data", async () => {
     "t.csv:2:1: warning: m",
   );
   assert.equal(yup.steps.join(" "), "parse resolve infer place ground check lower package");
-  assert.equal(yup.languageVersion, "0.2");
 });
 
 test("the library takes input files as a map, and shows a step", async () => {

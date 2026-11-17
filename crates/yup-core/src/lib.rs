@@ -44,7 +44,7 @@ pub struct InputFile {
 /// The input files a source reads with `csv "file.csv"`, in the order they are named.
 ///
 /// ```
-/// let source = "yup 0.2\nhistory : Value at main B2\nhistory = csv \"history.csv\"\n";
+/// let source = "history : Value at main B2\nhistory = csv \"history.csv\"\n";
 /// let files = yup_core::input_files(source).unwrap();
 /// assert_eq!(files[0].name, "history.csv");
 /// ```
@@ -69,9 +69,6 @@ pub fn input_files(source: &str) -> Result<Vec<InputFile>, Vec<Diagnostic>> {
     }
     Ok(files)
 }
-
-/// The version of the `.yup` language this crate reads, as a file's first line gives it.
-pub const LANGUAGE_VERSION: &str = parser::VERSION;
 
 /// The steps from a `.yup` file to an xlsx workbook, in order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -153,7 +150,7 @@ pub struct Built {
 /// Runs every step and returns the workbook.
 ///
 /// ```
-/// let source = "yup 0.2\nworkbook : Workbook\nworkbook = { sheets = [main] }\n\
+/// let source = "workbook : Workbook\nworkbook = { sheets = [main] }\n\
 ///               main : Sheet\nmain = { name = 'Main' }\n\
 ///               rate : Value Number at main D2\nrate = 0.05\n\
 ///               growth : Formula Number rate down\ngrowth = (1 + rate) ^ (1 .. 3)\n";
@@ -176,7 +173,7 @@ pub fn build(source: &str, inputs: &Inputs) -> Result<Built, Vec<Diagnostic>> {
 /// ```
 /// use yup_core::{Inputs, Step, show};
 ///
-/// let source = "yup 0.2\nworkbook : Workbook\nworkbook = { sheets = [main] }\n\
+/// let source = "workbook : Workbook\nworkbook = { sheets = [main] }\n\
 ///               main : Sheet\nmain = { name = 'Main' }\n\
 ///               years : Local\nyears = 1 .. 5\ngrowth : Local\ngrowth = tail years / lag 1 years\n";
 /// let shown = show(source, Step::Infer, &Inputs::new()).unwrap();
@@ -252,10 +249,10 @@ fn run(source: &str, inputs: &Inputs, last: Step, bytes: bool) -> Result<Outcome
 mod tests {
     use super::*;
 
-    /// A workbook of one sheet, `main`, for the bindings in `body`, which start on line 6.
+    /// A workbook of one sheet, `main`, for the bindings in `body`, which start on line 5.
     fn file(body: &str) -> String {
         format!(
-            "yup 0.2\nworkbook : Workbook\nworkbook = {{ sheets = [main] }}\nmain : Sheet\nmain = \
+            "workbook : Workbook\nworkbook = {{ sheets = [main] }}\nmain : Sheet\nmain = \
              {{ name = 'Main' }}\n{body}"
         )
     }
@@ -274,10 +271,10 @@ mod tests {
             .collect()
     }
 
-    /// What `text` shows after the five lines that `file` adds.
+    /// What `text` shows after the four lines that `file` adds.
     fn body(text: &str) -> String {
         text.lines()
-            .skip(5)
+            .skip(4)
             .map(|line| format!("{line}\n"))
             .collect()
     }
@@ -406,7 +403,6 @@ names
     #[test]
     fn styles_cascade_their_font_from_the_sheet_and_the_workbook() {
         let source = "\
-yup 0.2
 workbook : Workbook
 workbook = { sheets = [main], style = narrow }
 main : Sheet
@@ -466,9 +462,9 @@ b = 1 .. 3
         assert_eq!(
             errors(source, Step::Infer),
             [
-                "7:25: error: the two sides of `/` are misaligned along the columns: one covers \
+                "6:25: error: the two sides of `/` are misaligned along the columns: one covers \
                  positions [1, 3) and the other [0, 2); `lag` shifts a range along, and `tail` \
-                 and `init` drop its ends, in `shift` as it is called at 9:5"
+                 and `init` drop its ends, in `shift` as it is called at 8:5"
             ]
         );
     }
@@ -527,7 +523,7 @@ closing = opening - paid
                 Step::Infer
             ),
             [
-                "9:1: error: nothing outside the cycle gives `closing` its length: it needs a row \
+                "8:1: error: nothing outside the cycle gives `closing` its length: it needs a row \
                  or a column it uses position by position, such as a timeline"
             ]
         );
@@ -551,7 +547,7 @@ latest = lookup (maximum (column \"year\" sales)) (column \"year\" sales) (colum
             input_files(&file(SALES)).expect("parses"),
             [InputFile {
                 name: "sales.csv".to_string(),
-                pos: Pos::new(7, 13)
+                pos: Pos::new(6, 13)
             }]
         );
         let listing = show(&file(SALES), Step::Lower, &inputs)
@@ -579,7 +575,7 @@ latest = lookup (maximum (column \"year\" sales)) (column \"year\" sales) (colum
         let missing = show(&file(SALES), Step::Resolve, &Inputs::new()).expect_err("no file");
         assert_eq!(
             missing[0].to_string(),
-            "7:13: error: the input file `sales.csv` was not given"
+            "6:13: error: the input file `sales.csv` was not given"
         );
         let short = show(
             &file(SALES),
@@ -700,7 +696,7 @@ latest = lookup (maximum (column \"year\" sales)) (column \"year\" sales) (colum
                 Step::Infer
             ),
             [
-                "9:9: error: the two arguments of `xnpv` have different numbers of columns: 2 and \
+                "8:9: error: the two arguments of `xnpv` have different numbers of columns: 2 and \
                  3"
             ]
         );
@@ -732,7 +728,7 @@ latest = lookup (maximum (column \"year\" sales)) (column \"year\" sales) (colum
                 Step::Infer
             ),
             [
-                "11:13: error: `last 2` takes 2 columns, and the range has row_n, which may be as \
+                "10:13: error: `last 2` takes 2 columns, and the range has row_n, which may be as \
                  few as 1"
             ]
         );
@@ -758,7 +754,7 @@ latest = lookup (maximum (column \"year\" sales)) (column \"year\" sales) (colum
                 Step::Infer
             ),
             [
-                "9:5: error: the two arguments of `sum_if` have different numbers of columns: 3 \
+                "8:5: error: the two arguments of `sum_if` have different numbers of columns: 3 \
                  and 2"
             ]
         );
@@ -802,7 +798,7 @@ latest = lookup (maximum (column \"year\" sales)) (column \"year\" sales) (colum
         }
         assert_eq!(
             errors("t : Formula at main $B$2\nt = upper 5\n", Step::Infer),
-            ["7:11: error: `upper` takes Text here, and this is Number"]
+            ["6:11: error: `upper` takes Text here, and this is Number"]
         );
     }
 
@@ -823,7 +819,7 @@ latest = lookup (maximum (column \"year\" sales)) (column \"year\" sales) (colum
         }
         assert_eq!(
             errors("t : Formula at main $B$2\nt = all \"yes\"\n", Step::Infer),
-            ["7:9: error: `all` takes Logical here, and this is Text"]
+            ["6:9: error: `all` takes Logical here, and this is Text"]
         );
     }
 
@@ -904,9 +900,9 @@ doubled =                       round_to 0.5 (x * 2)
                 Step::Parse
             ),
             [
-                "6:11: error: an `Empty` holds nothing, so its signature names no type",
-                "7:11: error: an Empty signature has no style",
-                "8:11: error: an Empty signature has no start",
+                "5:11: error: an `Empty` holds nothing, so its signature names no type",
+                "6:11: error: an Empty signature has no style",
+                "7:11: error: an Empty signature has no start",
             ]
         );
         assert_eq!(
@@ -915,8 +911,8 @@ doubled =                       round_to 0.5 (x * 2)
                 Step::Resolve
             ),
             [
-                "7:1: error: `gap` is an `Empty`: it holds nothing, so it has no definition",
-                "9:9: error: `gap` is an `Empty`, which holds nothing a formula can use",
+                "6:1: error: `gap` is an `Empty`: it holds nothing, so it has no definition",
+                "8:9: error: `gap` is an `Empty`, which holds nothing a formula can use",
             ]
         );
         assert_eq!(
@@ -925,7 +921,7 @@ doubled =                       round_to 0.5 (x * 2)
                 Step::Infer
             ),
             [
-                "7:18: error: `gap` is an `Empty`, whose size is known when the file is written, \
+                "6:18: error: `gap` is an `Empty`, whose size is known when the file is written, \
                  so it names no unknown size"
             ]
         );
@@ -934,7 +930,7 @@ doubled =                       round_to 0.5 (x * 2)
                 "a : Label at main $B$2\na = \"A\"\ngap : Empty at main $B$2\n",
                 Step::Check
             ),
-            ["8:1: error: `a` and `gap` would share the cell B2"]
+            ["7:1: error: `a` and `gap` would share the cell B2"]
         );
     }
 
@@ -964,10 +960,10 @@ doubled =                       round_to 0.5 (x * 2)
         assert_eq!(
             errors(source, Step::Check),
             [
-                "8:16: error: `year` cannot set a width: how many columns it has, year_n, is \
+                "7:16: error: `year` cannot set a width: how many columns it has, year_n, is \
                  unknown when the file is written",
-                "12:11: error: `b` makes column B 80 pixels wide, and `a`, at 10:11, makes it 64",
-                "14:11: error: `e` makes row 5 20 pixels high, and `b`, at 12:20, makes it 30",
+                "11:11: error: `b` makes column B 80 pixels wide, and `a`, at 9:11, makes it 64",
+                "13:11: error: `e` makes row 5 20 pixels high, and `b`, at 11:20, makes it 30",
             ]
         );
     }
@@ -979,7 +975,7 @@ doubled =                       round_to 0.5 (x * 2)
         assert_eq!(
             errors(source, Step::Place),
             [
-                "10:21: error: `after` counts from the east side of `row`, whose width, row_n, \
+                "9:21: error: `after` counts from the east side of `row`, whose width, row_n, \
                  is unknown when the file is written; count from its west side, with `from \
                  west`, or place `after` elsewhere"
             ]
@@ -997,7 +993,7 @@ doubled =                       round_to 0.5 (x * 2)
                 .map(ToString::to_string)
                 .collect::<Vec<_>>(),
             [
-                "16:1: warning: `late` does not line up with `growth`: the two share period_n \
+                "15:1: warning: `late` does not line up with `growth`: the two share period_n \
                  along their columns, but position 2 of `late` is in column E and of `growth` in \
                  column F"
             ]
@@ -1009,14 +1005,14 @@ doubled =                       round_to 0.5 (x * 2)
         let clash = "a : Value at main D2\na = 1\nb : Value a right 0\nb = 2\n";
         assert_eq!(
             errors(clash, Step::Check),
-            ["8:1: error: `a` and `b` would share the cell D2"]
+            ["7:1: error: `a` and `b` would share the cell D2"]
         );
         let spill = "h : Value Number at main D2\nh = 3\nrow : Formula h down\nrow = 1 .. \
                      h\nside : Value at main I3\nside = 1\n";
         let shown = show(&file(spill), Step::Check, &Inputs::new()).expect("only a warning");
         assert_eq!(
             shown.warnings[0].to_string(),
-            "8:1: warning: `row` spills into `side` once row_n grows large enough; the workbook \
+            "7:1: warning: `row` spills into `side` once row_n grows large enough; the workbook \
              would show #SPILL!"
         );
         assert!(shown.text.contains(
@@ -1036,8 +1032,8 @@ doubled =                       round_to 0.5 (x * 2)
         assert_eq!(
             errors("b : Local\nb = c\na : Local\na = d\n", Step::Resolve),
             [
-                "7:5: error: unknown name `c`",
-                "9:5: error: unknown name `d`"
+                "6:5: error: unknown name `c`",
+                "8:5: error: unknown name `d`"
             ]
         );
     }

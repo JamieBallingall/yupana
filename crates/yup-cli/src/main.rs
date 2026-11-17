@@ -117,11 +117,7 @@ fn parse_args(args: &[String]) -> Result<Command, Failure> {
 fn run(command: Command) -> Result<(), Failure> {
     match command {
         Command::Help => println!("{USAGE}"),
-        Command::Version => println!(
-            "yup {}, reading .yup {}",
-            env!("CARGO_PKG_VERSION"),
-            yup_core::LANGUAGE_VERSION
-        ),
+        Command::Version => println!("yup {}", env!("CARGO_PKG_VERSION")),
         Command::Build { input, output } => {
             let output = match output {
                 Some(output) => output,

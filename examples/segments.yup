@@ -1,5 +1,3 @@
-yup 0.2
-
 // Revenue by segment for an invented retailer. The segments are read from segments.csv beside
 // this file, so their number is known when the workbook is written; the horizon is decided in
 // the workbook.

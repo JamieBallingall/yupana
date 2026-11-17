@@ -2,10 +2,9 @@
 //! JavaScript has WebAssembly, and `target/yup.html`, one page that runs it in a browser.
 //!
 //! It builds the `yup-wasm` module with the small `wasm` profile, embeds it as base64 in
-//! `js/template.mjs`, with the tool's and the language's versions, and copies the types,
-//! `js/yup.d.ts`, beside it. The page is `js/page.html` with the library part of the same file,
-//! everything above the line that starts its command line, inlined into it, and the minimal
-//! example to start from.
+//! `js/template.mjs`, with the tool's version, and copies the types, `js/yup.d.ts`, beside it.
+//! The page is `js/page.html` with the library part of the same file, everything above the line
+//! that starts its command line, inlined into it, and the minimal example to start from.
 
 use std::env;
 use std::ffi::OsString;
@@ -59,7 +58,6 @@ fn bundle() -> Result<String, String> {
         &[
             ("__YUP_WASM__", &base64(&wasm)),
             ("__YUP_VERSION__", env!("CARGO_PKG_VERSION")),
-            ("__YUP_LANGUAGE__", yup_core::LANGUAGE_VERSION),
         ],
     )?;
     let write = |path: &Path, bytes: &[u8]| {

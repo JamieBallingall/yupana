@@ -8,8 +8,6 @@ use crate::diagnostic::Pos;
 /// A whole `.yup` file.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Program {
-    /// The language version, from the first line.
-    pub version: String,
     pub items: Vec<Item>,
 }
 

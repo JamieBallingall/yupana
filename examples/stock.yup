@@ -1,5 +1,3 @@
-yup 0.2
-
 // The stock of one product at an invented shop, week by week, down the rows. Deliveries and
 // sales are read from stock.csv beside this file, and the stock left at the end of each week is
 // carried down to the next.

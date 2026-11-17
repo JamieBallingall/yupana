@@ -237,7 +237,7 @@ mod tests {
 
     fn file(body: &str) -> String {
         format!(
-            "yup 0.2\nworkbook : Workbook\nworkbook = {{ sheets = [main] }}\nmain : Sheet\nmain = \
+            "workbook : Workbook\nworkbook = {{ sheets = [main] }}\nmain : Sheet\nmain = \
              {{ name = 'Main' }}\n{body}"
         )
     }
@@ -255,7 +255,7 @@ mod tests {
         assert_eq!(out.byte(), Ok(0));
         assert_eq!(out.number(), Ok(1));
         assert_eq!(out.text().as_deref(), Ok("history.csv"));
-        assert_eq!((out.number(), out.number()), (Ok(7), Ok(15)));
+        assert_eq!((out.number(), out.number()), (Ok(6), Ok(15)));
         assert!(out.bytes.is_empty());
     }
 
@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn a_request_that_cannot_be_read_says_why() {
-        let mut request = request_for(1, Step::Parse, "yup 0.2\n", &[]);
+        let mut request = request_for(1, Step::Parse, "", &[]);
         request.pop();
         let response = respond(&request);
         let mut out = reader(&response);
@@ -320,7 +320,7 @@ mod tests {
 
     #[test]
     fn the_exports_keep_the_request_and_the_response() {
-        let source = "yup 0.2\n".as_bytes();
+        let source = "x = 1\n".as_bytes();
         let mut request_bytes = vec![0, 0];
         request_bytes.extend_from_slice(&number(source.len()).to_le_bytes());
         request_bytes.extend_from_slice(source);

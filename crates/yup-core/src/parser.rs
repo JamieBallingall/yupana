@@ -15,14 +15,10 @@ use crate::syntax::{
     Placement, Program, Role, ShapeSyntax, Side, Signature, SizeKind, SizeSyntax, StyleType, Type,
 };
 
-/// The language version this reader accepts, as the first line of a file gives it.
-pub const VERSION: &str = "0.2";
-
 /// Names that cannot be used for bindings, size variables or functions.
 pub const KEYWORDS: &[&str] = &[
     "across", "at", "down", "east", "else", "false", "from", "height", "if", "left", "north",
     "right", "seed", "size", "south", "start", "style", "then", "true", "up", "west", "width",
-    "yup",
 ];
 
 /// Parses a whole file.
@@ -147,14 +143,6 @@ impl Parser {
     }
 
     fn program(&mut self) -> Program {
-        let version = match self.version() {
-            Ok(version) => version,
-            Err(error) => {
-                self.errors.push(error);
-                self.skip_line();
-                VERSION.to_string()
-            }
-        };
         let mut items = Vec::new();
         while *self.peek() != Token::Eof {
             match self.statement() {
@@ -165,30 +153,7 @@ impl Parser {
                 }
             }
         }
-        Program { version, items }
-    }
-
-    fn version(&mut self) -> Parsed<String> {
-        let missing = Diagnostic::error(
-            self.pos(),
-            format!("a .yup file starts with the line `yup {VERSION}`"),
-        );
-        if !self.at_name("yup") {
-            return Err(missing);
-        }
-        self.advance();
-        let Token::Number(_, text) = self.peek().clone() else {
-            return Err(missing);
-        };
-        let pos = self.advance().pos;
-        if text != VERSION {
-            return Err(Diagnostic::error(
-                pos,
-                format!("this reader reads .yup {VERSION}, not {text}"),
-            ));
-        }
-        self.end_of_line()?;
-        Ok(text)
+        Program { items }
     }
 
     fn end_of_line(&mut self) -> Parsed<()> {
@@ -244,6 +209,13 @@ impl Parser {
                 Token::Colon => self.signature()?,
                 // A name followed by names is a lambda and its parameters.
                 Token::Equals | Token::Name(_) => self.definition()?,
+                // Files once started with their version, which tags on a release now carry.
+                Token::Number(..) if name == "yup" => {
+                    return Err(Diagnostic::error(
+                        pos,
+                        "a file no longer starts with its version: delete this line".to_string(),
+                    ));
+                }
                 Token::Text(_) | Token::Newline
                     if matches!(name.as_str(), "sheet" | "heading" | "gap") =>
                 {
@@ -1079,7 +1051,7 @@ mod tests {
     }
 
     fn definition(source: &str) -> Expr {
-        let program = parse(&format!("yup 0.2\nx = {source}\n")).expect("parses");
+        let program = parse(&format!("x = {source}\n")).expect("parses");
         match program.items.into_iter().next().map(|item| item.kind) {
             Some(ItemKind::Definition { expr, .. }) => expr,
             other => panic!("expected a definition, found {other:?}"),
@@ -1087,7 +1059,7 @@ mod tests {
     }
 
     fn signature(source: &str) -> Signature {
-        let program = parse(&format!("yup 0.2\n{source}\n")).expect("parses");
+        let program = parse(&format!("{source}\n")).expect("parses");
         match program.items.into_iter().next().map(|item| item.kind) {
             Some(ItemKind::Signature(sig)) => *sig,
             other => panic!("expected a signature, found {other:?}"),
@@ -1095,14 +1067,10 @@ mod tests {
     }
 
     #[test]
-    fn the_first_line_gives_the_version() {
+    fn a_version_line_is_refused_with_a_hint() {
         assert_eq!(
-            errors("x = 1\n"),
-            ["1:1: error: a .yup file starts with the line `yup 0.2`"]
-        );
-        assert_eq!(
-            errors("yup 0.1\n"),
-            ["1:5: error: this reader reads .yup 0.2, not 0.1"]
+            errors("yup 0.2\nx = 1\n"),
+            ["1:1: error: a file no longer starts with its version: delete this line"]
         );
     }
 
@@ -1152,34 +1120,34 @@ mod tests {
     fn a_signature_explains_what_it_lacks() {
         assert_eq!(
             errors(
-                "yup 0.2\nx : Input\ny : Formula Number money revenue_label right 2\nz : Formula x \
+                "x : Input\ny : Formula Number money revenue_label right 2\nz : Formula x \
                  left 1 left 2\n"
             ),
             [
-                "2:5: error: `Input` is not a role; a signature starts with Formula, Value, Label, \
+                "1:5: error: `Input` is not a role; a signature starts with Formula, Value, Label, \
                  Empty, Local, Lambda, Style, Sheet, Workbook or Size; a cell written in the file \
                  is a `Value`, such as `rate : Value Number style percent rate_label right 2`",
-                "3:26: error: expected a move from `money`, such as `money down` or `money right \
+                "2:26: error: expected a move from `money`, such as `money down` or `money right \
                  2`; if `money` is a style, it goes after `style`, as in `style money`, found \
                  `revenue_label`",
-                "4:22: error: a placement moves at most once along each axis: once left or right, \
+                "3:22: error: a placement moves at most once along each axis: once left or right, \
                  and once up or down",
             ]
         );
         assert_eq!(
             errors(
-                "yup 0.2\na : Formula Number style revenue_label right 2\nb : Formula _ at s B2\nc \
+                "a : Formula Number style revenue_label right 2\nb : Formula _ at s B2\nc \
                  : Formula [1, 2] at s B2\nd : Formula style x at s B2 style y\ne : Local at s \
                  B2\nf : Lambda Number -> Number style money\n"
             ),
             [
-                "2:40: error: a move follows the binding it is made from, as in `revenue right 1`",
-                "3:13: error: a signature leaves the style out for the default, and names one \
+                "1:40: error: a move follows the binding it is made from, as in `revenue right 1`",
+                "2:13: error: a signature leaves the style out for the default, and names one \
                  with `style`, as in `style money`; `_` is not needed",
-                "4:13: error: a size follows `size`, as in `size [1, n]`",
-                "5:29: error: this signature already gives a style",
-                "6:11: error: a Local signature has no place",
-                "7:29: error: a Lambda signature has no style",
+                "3:13: error: a size follows `size`, as in `size [1, n]`",
+                "4:29: error: this signature already gives a style",
+                "5:11: error: a Local signature has no place",
+                "6:29: error: a Lambda signature has no style",
             ]
         );
     }
@@ -1191,14 +1159,14 @@ mod tests {
         assert_eq!(sig.height.map(|(height, _)| height), Some(28));
         assert_eq!(
             errors(
-                "yup 0.2\na : Label width 0 at s B2\nb : Label height 546 at s B2\nc : Label width \
+                "a : Label width 0 at s B2\nb : Label height 546 at s B2\nc : Label width \
                  6.5 at s B2\nd : Local width 4\n"
             ),
             [
-                "2:17: error: a column is from 1 to 1785 pixels wide",
-                "3:18: error: a row is from 1 to 545 pixels high",
-                "4:17: error: expected a whole number of pixels, found the number `6.5`",
-                "5:11: error: a Local signature has no width",
+                "1:17: error: a column is from 1 to 1785 pixels wide",
+                "2:18: error: a row is from 1 to 545 pixels high",
+                "3:17: error: expected a whole number of pixels, found the number `6.5`",
+                "4:11: error: a Local signature has no width",
             ]
         );
     }
@@ -1216,19 +1184,19 @@ mod tests {
             })
         ));
         assert_eq!(
-            errors("yup 0.2\nx : Label at main $B2\ny : Label at main B$2\nz = $B$2 + 1\n"),
+            errors("x : Label at main $B2\ny : Label at main B$2\nz = $B$2 + 1\n"),
             [
-                "2:19: error: `$B2` fixes only part of the cell; a binding's cell never moves, so \
+                "1:19: error: `$B2` fixes only part of the cell; a binding's cell never moves, so \
                  write `$B$2` or `B2`",
-                "3:19: error: `B$2` fixes only part of the cell; a binding's cell never moves, so \
+                "2:19: error: `B$2` fixes only part of the cell; a binding's cell never moves, so \
                  write `$B$2` or `B2`",
-                "4:5: error: `$B$2` reads as a cell; formulas in .yup name bindings, not cells",
+                "3:5: error: `$B$2` reads as a cell; formulas in .yup name bindings, not cells",
             ]
         );
         assert_eq!(
-            errors("yup 0.2\nw = $b$2\n"),
+            errors("w = $b$2\n"),
             [
-                "2:5: error: `$` goes only in the cell a binding is placed at, before its column and \
+                "1:5: error: `$` goes only in the cell a binding is placed at, before its column and \
                  its row, as in `at forecast $B$2`"
             ]
         );
@@ -1297,11 +1265,11 @@ mod tests {
     #[test]
     fn every_wrong_line_is_reported() {
         assert_eq!(
-            errors("yup 0.2\nx = \ny = 1 +\nz = (1 2)\n"),
+            errors("x = \ny = 1 +\nz = (1 2)\n"),
             [
-                "2:5: error: expected a value, found the end of the line",
-                "3:8: error: expected a value, found the end of the line",
-                "4:8: error: expected `)`, found the number `2`",
+                "1:5: error: expected a value, found the end of the line",
+                "2:8: error: expected a value, found the end of the line",
+                "3:8: error: expected `)`, found the number `2`",
             ]
         );
     }
@@ -1309,14 +1277,14 @@ mod tests {
     #[test]
     fn the_spreadsheet_apps_habits_get_a_hint() {
         assert_eq!(
-            errors("yup 0.2\na = discount(rate, years)\nb = SUM(x)\nc = B2 + 1\nd = true\n"),
+            errors("a = discount(rate, years)\nb = SUM(x)\nc = B2 + 1\nd = true\n"),
             [
-                "2:18: error: a function takes its arguments without parentheses or commas, as \
+                "1:18: error: a function takes its arguments without parentheses or commas, as \
                  in `discount rate years`",
-                "3:5: error: `SUM(…)` is the spreadsheet app's; in .yup functions are lower case \
+                "2:5: error: `SUM(…)` is the spreadsheet app's; in .yup functions are lower case \
                  and take their arguments without parentheses: `sum x`",
-                "4:5: error: `B2` reads as a cell; formulas in .yup name bindings, not cells",
-                "5:5: error: a logical is written `True`, in upper case",
+                "3:5: error: `B2` reads as a cell; formulas in .yup name bindings, not cells",
+                "4:5: error: a logical is written `True`, in upper case",
             ]
         );
     }
@@ -1324,16 +1292,16 @@ mod tests {
     #[test]
     fn comparisons_do_not_chain() {
         assert_eq!(
-            errors("yup 0.2\nx = a < b < c\n"),
-            ["2:11: error: comparisons do not chain; combine them with `&&`"]
+            errors("x = a < b < c\n"),
+            ["1:11: error: comparisons do not chain; combine them with `&&`"]
         );
     }
 
     #[test]
     fn a_size_subtracts_only_numbers() {
         assert_eq!(
-            errors("yup 0.2\nx : Local size [1, n - m]\n"),
-            ["2:24: error: a size can subtract a number but not a size variable"]
+            errors("x : Local size [1, n - m]\n"),
+            ["1:24: error: a size can subtract a number but not a size variable"]
         );
     }
 }

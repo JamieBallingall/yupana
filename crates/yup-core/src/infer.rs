@@ -1426,10 +1426,10 @@ mod tests {
     use crate::parser::parse;
     use crate::resolve::resolve;
 
-    /// A workbook of one sheet, `main`, for the bindings in `body`, which start on line 6.
+    /// A workbook of one sheet, `main`, for the bindings in `body`, which start on line 5.
     fn file(body: &str) -> String {
         format!(
-            "yup 0.2\nworkbook : Workbook\nworkbook = {{ sheets = [main] }}\nmain : Sheet\nmain = \
+            "workbook : Workbook\nworkbook = {{ sheets = [main] }}\nmain : Sheet\nmain = \
              {{ name = 'Main' }}\n{body}"
         )
     }
@@ -1492,7 +1492,7 @@ mod tests {
         assert_eq!(
             typed(&format!("{grid}x : Local\nx = tail grid\n")).expect_err("no direction"),
             [
-                "9:5: error: `tail` works across or down, and this range has more than one row \
+                "8:5: error: `tail` works across or down, and this range has more than one row \
                  and column: say which, as in `tail across x`"
             ]
         );
@@ -1508,7 +1508,7 @@ mod tests {
         assert_eq!(
             typed(&source).expect_err("misaligned"),
             [
-                "13:23: error: the two sides of `/` are misaligned along the columns: one covers \
+                "12:23: error: the two sides of `/` are misaligned along the columns: one covers \
                  positions [1, period_n) and the other [0, period_n - 1); `lag` shifts a range \
                  along, and `tail` and `init` drop its ends"
             ]
@@ -1524,7 +1524,7 @@ mod tests {
         assert_eq!(
             typed(&source).expect_err("two sizes"),
             [
-                "15:16: error: the two sides of `+` have different numbers of columns: period_n \
+                "14:16: error: the two sides of `+` have different numbers of columns: period_n \
                  and other_n"
             ]
         );
@@ -1546,7 +1546,7 @@ mod tests {
                      [1, n]\nq = tail p\n";
         assert_eq!(
             typed(wrong).expect_err("wrong size"),
-            ["11:20: error: `q` has n - 1 columns, not n"]
+            ["10:20: error: `q` has n - 1 columns, not n"]
         );
     }
 
@@ -1602,17 +1602,17 @@ mod tests {
             )
             .expect_err("wrong types"),
             [
-                "6:11: error: `a` holds Number, not Text",
-                "9:9: error: `+` works on numbers, and this is Text; text is joined with `++`",
-                "13:7: error: `f` takes Number for `x`, and this is Text",
+                "5:11: error: `a` holds Number, not Text",
+                "8:9: error: `+` works on numbers, and this is Text; text is joined with `++`",
+                "12:7: error: `f` takes Number for `x`, and this is Text",
             ]
         );
         assert_eq!(
             typed("a : Local\na = sqrt \"x\"\nb : Local\nb = round 2 \"y\"\n")
                 .expect_err("wrong types"),
             [
-                "7:10: error: `sqrt` takes Number here, and this is Text",
-                "9:13: error: `round` takes Number here, and this is Text",
+                "6:10: error: `sqrt` takes Number here, and this is Text",
+                "8:13: error: `round` takes Number here, and this is Text",
             ]
         );
     }

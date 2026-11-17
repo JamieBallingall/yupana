@@ -32,9 +32,6 @@ export type Step =
 /** The version of the tool. */
 export const version: string;
 
-/** The version of the `.yup` language the tool reads. */
-export const languageVersion: string;
-
 /** The steps, in order. */
 export const steps: readonly Step[];
 

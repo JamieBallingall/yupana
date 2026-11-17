@@ -616,12 +616,12 @@ mod tests {
 
     #[test]
     fn positions_count_lines_and_characters() {
-        let lexed = lex("yup 0.2\nlabel : 'Café' Value").expect("lexes");
+        let lexed = lex("x = 1.5\nlabel : 'Café' Value").expect("lexes");
         let positions: Vec<String> = lexed.iter().map(|l| l.pos.to_string()).collect();
         assert_eq!(
             positions,
             [
-                "1:1", "1:5", "1:8", "2:1", "2:7", "2:9", "2:16", "2:21", "2:21"
+                "1:1", "1:3", "1:5", "1:8", "2:1", "2:7", "2:9", "2:16", "2:21", "2:21"
             ]
         );
     }

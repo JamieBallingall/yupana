@@ -1,5 +1,3 @@
-yup 0.2
-
 // Sales history for an invented company, read from history.csv beside this file, and a
 // forecast that starts from its last year. The table is written into the workbook as values,
 // under labels that name its columns.

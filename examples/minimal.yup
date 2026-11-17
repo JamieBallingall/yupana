@@ -1,5 +1,3 @@
-yup 0.2
-
 // The smallest useful .yup file: two values and a formula, each with a label, on one sheet.
 
 workbook : Workbook

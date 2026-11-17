@@ -1820,7 +1820,7 @@ mod tests {
     /// A workbook of one sheet, `s`, for the bindings in `body`.
     fn file(body: &str) -> String {
         format!(
-            "yup 0.2\nworkbook : Workbook\nworkbook = {{ sheets = [s] }}\ns : Sheet\ns = {{ name = \
+            "workbook : Workbook\nworkbook = {{ sheets = [s] }}\ns : Sheet\ns = {{ name = \
              'S' }}\n{body}"
         )
     }
@@ -1883,13 +1883,13 @@ mod tests {
         assert_eq!(
             errors("a : Local\n\na = 1\nb : Local\nc = 2\nd = 3\ne : Local\n"),
             [
-                "8:1: error: the definition of `a` follows its signature directly, with only \
+                "7:1: error: the definition of `a` follows its signature directly, with only \
                  comments between",
-                "10:1: error: this defines `c`, but the signature above it is of `b`; a \
+                "9:1: error: this defines `c`, but the signature above it is of `b`; a \
                  definition follows its own signature",
-                "11:1: error: `d` has no signature above it; a binding is a signature, such as \
+                "10:1: error: `d` has no signature above it; a binding is a signature, such as \
                  `d : Formula Number …`, and then its definition",
-                "12:1: error: `e` has a signature but no definition below it, such as `e = …`",
+                "11:1: error: `e` has a signature but no definition below it, such as `e = …`",
             ]
         );
     }
@@ -1899,11 +1899,11 @@ mod tests {
         assert_eq!(
             errors("tax2026 : Local\ntax2026 = 1\nr1c1 : Local\nr1c1 = 2\nsum : Local\nsum = 3\n"),
             [
-                "6:1: error: `tax2026` reads as a cell reference in the workbook; choose another \
+                "5:1: error: `tax2026` reads as a cell reference in the workbook; choose another \
                  name",
-                "8:1: error: `r1c1` reads as a row or column reference in the workbook's R1C1 \
+                "7:1: error: `r1c1` reads as a row or column reference in the workbook's R1C1 \
                  notation; choose another name",
-                "10:1: error: `sum` is the name of a function; choose another name",
+                "9:1: error: `sum` is the name of a function; choose another name",
             ]
         );
     }
@@ -1918,20 +1918,20 @@ mod tests {
                  Local\ntaX2026 = 4\nsUm : Local\nsUm = 5\ntRue : Local\ntRue = 6\n"
             ),
             [
-                "8:1: error: `revenue_q1` differs from `revenue_Q1`, declared at 6:1, only in \
+                "7:1: error: `revenue_q1` differs from `revenue_Q1`, declared at 5:1, only in \
                  case; the workbook ignores case in names, so choose another name",
-                "18:1: error: `taX2026` reads as a cell reference in the workbook; choose another \
+                "17:1: error: `taX2026` reads as a cell reference in the workbook; choose another \
                  name",
-                "20:1: error: `sUm` is the function `sum` in another case, and the workbook \
+                "19:1: error: `sUm` is the function `sum` in another case, and the workbook \
                  ignores case; choose another name",
-                "22:1: error: `tRue` is the keyword `true` in another case, and the workbook \
+                "21:1: error: `tRue` is the keyword `true` in another case, and the workbook \
                  ignores case; choose another name",
-                "13:7: error: `x_A` differs from `x_a`, declared at 13:3, only in case; the \
+                "12:7: error: `x_A` differs from `x_a`, declared at 12:3, only in case; the \
                  workbook ignores case in names, so choose another name",
-                "15:3: error: `rAte` differs from `rate`, declared at 10:1, only in case; the \
+                "14:3: error: `rAte` differs from `rate`, declared at 9:1, only in case; the \
                  workbook ignores case in names, so choose another name",
-                "17:5: error: unknown name `rATE`; it is written `rate`",
-                "17:12: error: unknown function `mAx`; it is written `max`",
+                "16:5: error: unknown name `rATE`; it is written `rate`",
+                "16:12: error: unknown function `mAx`; it is written `max`",
             ]
         );
     }
@@ -1944,13 +1944,13 @@ mod tests {
                  B2\nl = \"L\"\nv : Local\nv = l + s\n"
             ),
             [
-                "7:5: error: unknown name `y`",
-                "7:9: error: `sum` is a function; give it its arguments: `sum x`",
-                "9:5: error: `x` is not a lambda, so it cannot take arguments",
-                "11:5: error: `lag` takes 2 arguments: `lag 1 x, or lag 1 x seed first`",
-                "15:5: error: `l` is a label, which formulas cannot use; a text a formula uses is \
+                "6:5: error: unknown name `y`",
+                "6:9: error: `sum` is a function; give it its arguments: `sum x`",
+                "8:5: error: `x` is not a lambda, so it cannot take arguments",
+                "10:5: error: `lag` takes 2 arguments: `lag 1 x, or lag 1 x seed first`",
+                "14:5: error: `l` is a label, which formulas cannot use; a text a formula uses is \
                  a `Value`",
-                "15:9: error: `s` is a sheet, not something a formula can use",
+                "14:9: error: `s` is a sheet, not something a formula can use",
             ]
         );
     }
@@ -1960,7 +1960,7 @@ mod tests {
         assert_eq!(
             errors("a : Local\na = b\nb : Local\nb = d + 1\nd : Local\nd = a\n"),
             [
-                "7:1: error: circular definition: a -> b -> d -> a; a value cannot depend on \
+                "6:1: error: circular definition: a -> b -> d -> a; a value cannot depend on \
                  itself, but `lag 1 x seed first` carries a value from one position to the next"
             ]
         );
@@ -1983,7 +1983,7 @@ mod tests {
                 "opening : Local\nopening = lag 1 closing seed 100\nclosing : Local\nclosing = opening - sum opening\n"
             ),
             [
-                "9:21: error: `sum` cannot take part in a value carried from one position to the \
+                "8:21: error: `sum` cannot take part in a value carried from one position to the \
                  next, which is worked out one position at a time"
             ]
         );
@@ -1997,13 +1997,13 @@ mod tests {
                  down\nk = 'K'\nn : Size Unknown\nn = 3\n"
             ),
             [
-                "13:1: error: `n` is an unknown size: the workbook decides its value, so it \
+                "12:1: error: `n` is an unknown size: the workbook decides its value, so it \
                  cannot be given one here",
-                "7:5: error: a value holds one number, string or logical; many values belong in \
+                "6:5: error: a value holds one number, string or logical; many values belong in \
                  an input file, read with `csv \"file.csv\"`",
-                "9:7: error: a value is written in the file: a number, a string, `True` or \
+                "8:7: error: a value is written in the file: a number, a string, `True` or \
                  `False`, or `csv \"file.csv\"`; a value worked out from others is a `Formula`",
-                "11:5: error: a label's text is data, in double quotes, such as \"Revenue\"",
+                "10:5: error: a label's text is data, in double quotes, such as \"Revenue\"",
             ]
         );
     }
@@ -2017,16 +2017,16 @@ mod tests {
                  Number\nf x y = x\nx : Local\nx y = 1\n"
             ),
             [
-                "12:1: error: `f`'s type names 1 parameter, and its definition gives 2",
-                "15:3: error: `x` is a Local, and only a lambda takes parameters",
-                "9:5: error: `discount` takes 2 arguments: `discount rate t`",
-                "11:5: error: `discount` is a lambda; give it its arguments: `discount rate t`",
+                "11:1: error: `f`'s type names 1 parameter, and its definition gives 2",
+                "14:3: error: `x` is a Local, and only a lambda takes parameters",
+                "8:5: error: `discount` takes 2 arguments: `discount rate t`",
+                "10:5: error: `discount` is a lambda; give it its arguments: `discount rate t`",
             ]
         );
         assert_eq!(
             errors("g : Lambda Number -> Number\ng x = tail x\n"),
             [
-                "7:7: error: inside a lambda, `tail` says which way it works, `across` or \
+                "6:7: error: inside a lambda, `tail` says which way it works, `across` or \
                  `down`, as in `tail across x`: the lambda may be given rows or columns"
             ]
         );
@@ -2034,7 +2034,7 @@ mod tests {
 
     #[test]
     fn sheets_and_the_workbook_are_checked() {
-        let source = "yup 0.2\nworkbook : Workbook\nworkbook = { sheets = [a, a, b], colour = 1 \
+        let source = "workbook : Workbook\nworkbook = { sheets = [a, a, b], colour = 1 \
                       }\na : Sheet\na = { name = 'a/b', hidden = True }\nb : Sheet\nb = { name = \
                       'A/B', hidden = True, style = big }\nk : Sheet\nk = { name = 'K' }\nbig : \
                       Style Cell\nbig = { font = { size = 20, bold = True } }\n";
@@ -2046,24 +2046,24 @@ mod tests {
         assert_eq!(
             errors,
             [
-                "3:27: error: the sheet `a` is listed twice",
-                "3:34: error: a workbook has no field `colour`; its fields are sheets, style, \
+                "2:27: error: the sheet `a` is listed twice",
+                "2:34: error: a workbook has no field `colour`; its fields are sheets, style, \
                  column_width and row_height",
-                "5:14: error: a sheet name cannot contain `/`",
-                "7:14: error: a sheet name cannot contain `/`",
-                "7:14: error: there is already a sheet called 'a/b'; sheet names ignore case",
-                "11:29: error: only the font's name and size cascade from a sheet or the \
+                "4:14: error: a sheet name cannot contain `/`",
+                "6:14: error: a sheet name cannot contain `/`",
+                "6:14: error: there is already a sheet called 'a/b'; sheet names ignore case",
+                "10:29: error: only the font's name and size cascade from a sheet or the \
                  workbook, and `font.bold` is neither; set it in the style of the cells",
-                "9:1: error: the workbook's `sheets` does not list `k`; every sheet is listed, in \
+                "8:1: error: the workbook's `sheets` does not list `k`; every sheet is listed, in \
                  the order of the tabs",
-                "3:1: error: every sheet is hidden; at least one must be shown",
+                "2:1: error: every sheet is hidden; at least one must be shown",
             ]
         );
     }
 
     #[test]
     fn a_sheet_and_the_workbook_set_default_widths_and_heights() {
-        let source = "yup 0.2\nworkbook : Workbook\nworkbook = { sheets = [a, b], column_width = \
+        let source = "workbook : Workbook\nworkbook = { sheets = [a, b], column_width = \
                       80, row_height = 24 }\na : Sheet\na = { name = 'A', column_width = 120 \
                       }\nb : Sheet\nb = { name = 'B' }\n";
         let model = resolve(&parse(source).expect("parses"), &Inputs::new()).expect("resolves");
@@ -2073,7 +2073,7 @@ mod tests {
             .map(|sheet| (sheet.column_width, sheet.row_height))
             .collect();
         assert_eq!(sizes, [(Some(120), Some(24)), (Some(80), Some(24))]);
-        let wrong = "yup 0.2\nworkbook : Workbook\nworkbook = { sheets = [a], column_width = 0 \
+        let wrong = "workbook : Workbook\nworkbook = { sheets = [a], column_width = 0 \
                      }\na : Sheet\na = { name = 'A', row_height = 2.5 }\n";
         let errors: Vec<String> = resolve(&parse(wrong).expect("parses"), &Inputs::new())
             .expect_err("wrong")
@@ -2083,8 +2083,8 @@ mod tests {
         assert_eq!(
             errors,
             [
-                "3:43: error: a column is from 1 to 1785 pixels wide",
-                "5:32: error: `row_height` is a whole number of pixels, such as `row_height = 20`",
+                "2:43: error: a column is from 1 to 1785 pixels wide",
+                "4:32: error: `row_height` is a whole number of pixels, such as `row_height = 20`",
             ]
         );
     }
@@ -2097,12 +2097,12 @@ mod tests {
                  right\nk = \"K\"\nd : Label at nowhere B2\nd = \"D\"\ne : Label\ne = \"E\"\n"
             ),
             [
-                "14:1: error: `e` needs a place: a cell, as in `at forecast B2`, or beside \
+                "13:1: error: `e` needs a place: a cell, as in `at forecast B2`, or beside \
                  another binding, as in `… e_label right 2`",
-                "10:11: error: `k` cannot be placed beside itself",
-                "12:14: error: `nowhere` is not a sheet; `at` takes a sheet and a cell, as in `at \
+                "9:11: error: `k` cannot be placed beside itself",
+                "11:14: error: `nowhere` is not a sheet; `at` takes a sheet and a cell, as in `at \
                  nowhere B2`, where `nowhere : Sheet`",
-                "6:1: error: these bindings are placed beside each other in a circle: a -> b -> \
+                "5:1: error: these bindings are placed beside each other in a circle: a -> b -> \
                  a; one of them goes at a cell, with `at`",
             ]
         );

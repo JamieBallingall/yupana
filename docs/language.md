@@ -7,8 +7,6 @@ records why each choice was made and what is still open. Everything here is illu
 ## A file
 
 ```text
-yup 0.2
-
 // A comment runs from // to the end of the line.
 
 workbook : Workbook
@@ -33,7 +31,9 @@ year : Formula Number year_label right 2
 year = 1 .. horizon
 ```
 
-- The first line is `yup 0.2`. A reader refuses any other version.
+- A file does not say which version of the language it is written in: the tool's release does.
+  A line such as `yup 0.2`, which began every file before 2026-11-17, is refused with a hint to
+  delete it.
 - A file is a list of bindings. Each is a signature, `name : …`, and directly below it, with
   only comments between, its definition, `name = …`. The name is written on both lines.
 - The bindings can come in any order: neither what they mean nor where they go depends on it.
@@ -437,7 +437,7 @@ forecast = { name = 'Forecast', color = red, hidden = False, style = big }
   rename. A name cannot read as a cell (`tax2026`) or as R1C1 notation (`r`, `c`, `r1c1`), and
   cannot be the name of a built-in function or a keyword: `across`, `at`, `down`, `east`,
   `else`, `false`, `from`, `height`, `if`, `left`, `north`, `right`, `seed`, `size`, `south`,
-  `start`, `style`, `then`, `true`, `up`, `west`, `width` or `yup`.
+  `start`, `style`, `then`, `true`, `up`, `west` or `width`.
 - Defined names ignore case, so these rules do too: `taX2026` reads as a cell, and `sUm` is the
   function `sum`. Two names that differ only in case are an error, as is a lambda's parameter
   that differs only in case from a name in the file. A name is written the same way everywhere:

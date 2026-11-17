@@ -695,7 +695,7 @@ mod tests {
     /// Works out the style called `last` among the definitions in `source`, each of whose names
     /// says its type: a name starting `cell` is a Cell, `border` a Border, and `color` a Color.
     fn evaluate(source: &str, last: &str) -> Result<CellStyle, Vec<String>> {
-        let program = parse(&format!("yup 0.2\n{source}")).expect("parses");
+        let program = parse(source).expect("parses");
         let mut declared = Vec::new();
         for item in &program.items {
             if let ItemKind::Definition { name, expr, .. } = &item.kind {
@@ -748,7 +748,7 @@ mod tests {
                 "cell_total"
             ),
             Err(vec![
-                "3:48: error: `weight` is set already, at 2:37; an update only adds fields, and \
+                "2:48: error: `weight` is set already, at 1:37; an update only adds fields, and \
                  never changes one"
                     .to_string()
             ])
@@ -764,18 +764,18 @@ mod tests {
                 "cell_a"
             ),
             Err(vec![
-                "2:12: error: a Cell has no field `colour`; its fields are format, font, fill, \
+                "1:12: error: a Cell has no field `colour`; its fields are format, font, fill, \
                  border, align"
                     .to_string(),
-                "2:33: error: `x` cannot appear in a number format outside double quotes"
+                "1:33: error: `x` cannot appear in a number format outside double quotes"
                     .to_string(),
-                "2:45: error: `border_b` is a style of type Border, and a Color is needed here"
+                "1:45: error: `border_b` is a style of type Border, and a Color is needed here"
                     .to_string(),
-                "2:71: error: a font's size is from 1 to 409.55 points".to_string(),
-                "3:31: error: `Heavy` is not one of Thin, Medium, Thick, Double, Hair, Dotted, \
+                "1:71: error: a font's size is from 1 to 409.55 points".to_string(),
+                "2:31: error: `Heavy` is not one of Thin, Medium, Thick, Double, Hair, Dotted, \
                  Dashed"
                     .to_string(),
-                "4:10: error: a style is built on itself: cell_c -> cell_c".to_string(),
+                "3:10: error: a style is built on itself: cell_c -> cell_c".to_string(),
             ])
         );
     }
@@ -788,7 +788,7 @@ mod tests {
                 "cell_a"
             ),
             Err(vec![
-                "2:28: error: a font's name has at most 31 characters".to_string()
+                "1:28: error: a font's name has at most 31 characters".to_string()
             ])
         );
         let largest = evaluate("cell_a = { font = { size = 409.55 } }\n", "cell_a")
@@ -797,7 +797,7 @@ mod tests {
         assert_eq!(
             evaluate("cell_a = { font = { size = 409.6 } }\n", "cell_a"),
             Err(vec![
-                "2:28: error: a font's size is from 1 to 409.55 points".to_string()
+                "1:28: error: a font's size is from 1 to 409.55 points".to_string()
             ])
         );
         let deepest = evaluate(
@@ -812,7 +812,7 @@ mod tests {
                 "cell_a"
             ),
             Err(vec![
-                "2:50: error: a whole number from 0 to 255 is needed here".to_string()
+                "1:50: error: a whole number from 0 to 255 is needed here".to_string()
             ])
         );
         let centered = evaluate(

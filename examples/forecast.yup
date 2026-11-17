@@ -1,5 +1,3 @@
-yup 0.2
-
 // A revenue and profit forecast for an invented company. The horizon is a value: change it in
 // the workbook, and every row of the forecast resizes to match.
 

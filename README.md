@@ -170,7 +170,7 @@ provisional, and names the open question it answers where there is one. 0.2 repl
 this: an entry it replaced says so, in italics, and the sections on 0.2 stand.
 
 - **The first line** is `yup 0.1`, and the extension stays `.yup` for now (question 11). *Replaced
-  in 0.2: the first line is `yup 0.2`.*
+  in 0.2: the first line is `yup 0.2`; and on 2026-11-17 there is no version line.*
 - **Roles.** A binding is shown when its signature has a label, an input when the signature also
   says `Input`, and local otherwise. A signature without a label still has its size checked.
   *Replaced in 0.2: every signature states its role.*
@@ -468,6 +468,13 @@ Decided while building 0.2, from 2026-11-03, where the decisions above left some
 is provisional. [docs/language.md](docs/language.md) describes 0.2 as it is built.
 
 - **The first line** is `yup 0.2`, and a reader of 0.2 refuses 0.1: no file in 0.1 is kept.
+  *Replaced 2026-11-17: there is no version line; see below.*
+- **No version line** (decided 2026-11-17). A file no longer starts with `yup 0.2`. While the
+  language changes quickly, each break meant a new line in every file for little gain: the
+  error messages already name what to write instead of an old form, and a file is written for
+  a release of the tool, whose tag carries the version. A file that starts `yup 0.2` is refused
+  with a hint to delete the line, and `yup` is no longer a keyword. A version line can come back
+  as optional once the language is stable, which breaks no file; a required one could not.
 - **The order of a signature's parts** is role, type, style, size, start and place.
   *Replaced 2026-11-04 by keywords, below.*
 - **Keywords for a signature's parts** (decided 2026-11-04). After the role and the type, each
@@ -981,7 +988,8 @@ Where 0.1 or 0.2 gives an answer, it follows in italics; [Built for 0.1](#built-
 10. **The MCP server's tools:** check a file, print any step's `.yup`, write the xlsx.
 11. **The file:** keep the `.yup` extension? Either way, the first line identifies the version, so
     each reader refuses the other format's files. *0.1: `.yup`, and the first line is `yup 0.1`.
-    0.2: `.yup`, and `yup 0.2`; a reader of 0.2 refuses 0.1.*
+    0.2: `.yup`, and `yup 0.2`; a reader of 0.2 refuses 0.1. From 2026-11-17: `.yup`, and no
+    version line.*
 12. **Names:** of the project and its crates. *2026-11-17: the project is yupana; the crates
     and the command keep their provisional names, `yup-core`, `yup-cli` and `yup`.*
 13. **Exporting bindings:** whether a shown binding can stay unexported, and whether a local one

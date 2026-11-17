@@ -27,7 +27,7 @@ fn text(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).replace("\r\n", "\n")
 }
 
-const SOURCE: &str = "yup 0.2\nworkbook : Workbook\nworkbook = { sheets = [main] }\nmain : \
+const SOURCE: &str = "workbook : Workbook\nworkbook = { sheets = [main] }\nmain : \
                       Sheet\nmain = { name = 'Main' }\nrate : Value Number at main D2\nrate = \
                       0.05\ngrowth : Formula rate down\ngrowth = (1 + rate) ^ (1 .. 3)\n";
 
@@ -37,7 +37,7 @@ fn show_prints_what_a_step_makes_of_the_file() {
     assert!(output.status.success(), "{}", text(&output.stderr));
     assert_eq!(
         text(&output.stdout),
-        "yup 0.2\nworkbook : Workbook\nworkbook = { sheets = [main] }\nmain : Sheet\nmain = { name = \
+        "workbook : Workbook\nworkbook = { sheets = [main] }\nmain : Sheet\nmain = { name = \
          'Main' }\nrate : Value Number size [1, 1] at main D2\nrate = 0.05\ngrowth : Formula Number \
          size [1, 3] at main D3\ngrowth = (1 + rate) ^ (1 .. 3)\n"
     );
@@ -70,31 +70,31 @@ fn build_writes_a_workbook_file() {
 fn problems_are_reported_with_file_line_and_column() {
     let output = yup(
         &["check", "-"],
-        b"yup 0.2\nx : Local\nx = y + 1\nz : Local\nz = 1 ++\n",
+        b"x : Local\nx = y + 1\nz : Local\nz = 1 ++\n",
     );
     assert_eq!(output.status.code(), Some(1));
     assert_eq!(
         text(&output.stderr),
-        "<stdin>:5:9: error: expected a value, found the end of the line\n"
+        "<stdin>:4:9: error: expected a value, found the end of the line\n"
     );
     let output = yup(
         &["check", "-"],
-        b"yup 0.2\nworkbook : Workbook\nworkbook = { sheets = [main] }\nmain : Sheet\nmain = { \
+        b"workbook : Workbook\nworkbook = { sheets = [main] }\nmain : Sheet\nmain = { \
           name = 'Main' }\nx : Local\nx = y + 1\n",
     );
     assert_eq!(
         text(&output.stderr),
-        "<stdin>:7:5: error: unknown name `y`\n"
+        "<stdin>:6:5: error: unknown name `y`\n"
     );
 }
 
 #[test]
 fn a_file_that_is_not_utf8_is_refused_where_it_goes_wrong() {
-    let output = yup(&["check", "-"], b"yup 0.2\nx = '\xff'\n");
+    let output = yup(&["check", "-"], b"x = '\xff'\n");
     assert_eq!(output.status.code(), Some(1));
     assert_eq!(
         text(&output.stderr),
-        "<stdin>:2:6: error: the file is not valid UTF-8 here\n"
+        "<stdin>:1:6: error: the file is not valid UTF-8 here\n"
     );
 }
 
@@ -128,11 +128,11 @@ fn build_reads_input_files_beside_the_source() {
     assert!(output.status.success(), "{}", text(&output.stderr));
     let output = yup(
         &["check", "-"],
-        b"yup 0.2\nt : Value at main B2\nt = csv \"nowhere.csv\"\n",
+        b"t : Value at main B2\nt = csv \"nowhere.csv\"\n",
     );
     assert_eq!(output.status.code(), Some(1));
     assert!(
-        text(&output.stderr).starts_with("<stdin>:3:9: error: cannot read nowhere.csv: "),
+        text(&output.stderr).starts_with("<stdin>:2:9: error: cannot read nowhere.csv: "),
         "{}",
         text(&output.stderr)
     );

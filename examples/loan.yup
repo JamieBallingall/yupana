@@ -1,5 +1,3 @@
-yup 0.2
-
 // A loan for an invented company, repaid on a schedule. Each year's opening balance is the year
 // before's closing balance: a value carried from one position to the next. The horizon can be
 // changed in the workbook, and the schedule resizes with it.

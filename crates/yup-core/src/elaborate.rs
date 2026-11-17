@@ -113,10 +113,7 @@ impl Edits {
             }
             items.push(item);
         }
-        Program {
-            version: program.version.clone(),
-            items,
-        }
+        Program { items }
     }
 }
 

@@ -16,9 +16,6 @@ const WASM = "__YUP_WASM__";
 /** The version of the tool. */
 export const version = "__YUP_VERSION__";
 
-/** The version of the `.yup` language the tool reads. */
-export const languageVersion = "__YUP_LANGUAGE__";
-
 /** The steps from a `.yup` file to a workbook, in order, as `show` takes them. */
 export const steps = Object.freeze([
   "parse",
@@ -388,7 +385,7 @@ async function run(command) {
       process.stdout.write(`${USAGE}\n`);
       return;
     case "version":
-      process.stdout.write(`yup ${version}, reading .yup ${languageVersion}\n`);
+      process.stdout.write(`yup ${version}\n`);
       return;
     case "build": {
       const { input } = command;

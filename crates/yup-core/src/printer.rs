@@ -14,7 +14,7 @@ const WIDTH: usize = 100;
 
 /// Prints a whole file.
 pub fn print(program: &Program) -> String {
-    let mut out = format!("yup {}\n", program.version);
+    let mut out = String::new();
     let mut previous_blank = true;
     for item in &program.items {
         if item.kind == ItemKind::Blank {
@@ -374,22 +374,22 @@ mod tests {
 
     #[test]
     fn printing_is_canonical() {
-        let source = "yup 0.2\n\n\n// Values\nh : Value   Number at  sheet  B2  style  money\nh = \
+        let source = "\n\n// Values\nh : Value   Number at  sheet  B2  style  money\nh = \
                       5 // years\n\nx=(1+2)*3-(4-5)\ny = - (2 ^ 2)  ++ \"a\\\"b\"\nz=[1,2;3,4]\n\n";
         assert_eq!(
             reprint(source),
-            "yup 0.2\n// Values\nh : Value Number style money at sheet B2\nh = 5 // \
+            "// Values\nh : Value Number style money at sheet B2\nh = 5 // \
              years\n\nx = (1 + 2) * 3 - (4 - 5)\ny = -2 ^ 2 ++ \"a\\\"b\"\nz = [1, 2; 3, 4]\n"
         );
     }
 
     #[test]
     fn a_long_record_gives_each_field_a_line() {
-        let source = "yup 0.2\ngrand_total = money { font = { bold = True, name = 'Arial' }, border \
+        let source = "grand_total = money { font = { bold = True, name = 'Arial' }, border \
                       = { top = { weight = Thin }, bottom = { weight = Double } } }\n";
         assert_eq!(
             reprint(source),
-            "yup 0.2\ngrand_total = money\n  { font = { bold = True, name = 'Arial' }\n  , border \
+            "grand_total = money\n  { font = { bold = True, name = 'Arial' }\n  , border \
              = { top = { weight = Thin }, bottom = { weight = Double } }\n  }\n"
         );
     }
@@ -397,19 +397,19 @@ mod tests {
     #[test]
     fn printing_twice_changes_nothing() {
         let sources = [
-            "yup 0.2\nx = (a - b) - (c - d)\n",
-            "yup 0.2\nx = 2 ^ 3 ^ 2 + (2 ^ 3) ^ 2\n",
-            "yup 0.2\nx = (-a) ^ 2 + -(a * b) - -c\n",
-            "yup 0.2\nx = if a > b then 1 .. n else f (g x) y\n",
-            "yup 0.2\nx = 1 + (if c then 2 else 3)\n",
-            "yup 0.2\nx = (a ++ b) ++ c ++ d\n",
-            "yup 0.2\nx = a || b && c || not d && (e || f)\n",
-            "yup 0.2\nx = (a || b) .. c\n",
-            "yup 0.2\nx = lag down 1 (a + b) seed (c * 2)\n",
-            "yup 0.2\nx : Formula Number style s size [s + 4, 2 * n - 1] start [0, 1] y down 2 right 1 from west\n",
-            "yup 0.2\nx : Lambda Number -> Text -> Logical\n",
-            "yup 0.2\nx = base { a = { b = Thin }, c = 'x''y' }\n",
-            "yup 0.2\nx = { a = 1 }\n",
+            "x = (a - b) - (c - d)\n",
+            "x = 2 ^ 3 ^ 2 + (2 ^ 3) ^ 2\n",
+            "x = (-a) ^ 2 + -(a * b) - -c\n",
+            "x = if a > b then 1 .. n else f (g x) y\n",
+            "x = 1 + (if c then 2 else 3)\n",
+            "x = (a ++ b) ++ c ++ d\n",
+            "x = a || b && c || not d && (e || f)\n",
+            "x = (a || b) .. c\n",
+            "x = lag down 1 (a + b) seed (c * 2)\n",
+            "x : Formula Number style s size [s + 4, 2 * n - 1] start [0, 1] y down 2 right 1 from west\n",
+            "x : Lambda Number -> Text -> Logical\n",
+            "x = base { a = { b = Thin }, c = 'x''y' }\n",
+            "x = { a = 1 }\n",
         ];
         for source in sources {
             let once = reprint(source);
@@ -417,7 +417,7 @@ mod tests {
         }
         assert_eq!(
             reprint(sources[0]),
-            "yup 0.2\nx = a - b - (c - d)\n",
+            "x = a - b - (c - d)\n",
             "left-grouped operators drop parentheses on the left only"
         );
     }
