@@ -471,6 +471,7 @@ replaced by their values. Running the pipeline on it gives it back unchanged.
   as `mediumDashed`), and the alignments `general`, `fill`, `centerContinuous` and `distributed`.
 - The syntax of an explicit lambda inside an expression.
 - Whether a CSV table gets a role of its own, `Table`, rather than being a kind of `Value`.
+  *0.3, as designed: no; a table is a type. See [Designed for 0.3](#designed-for-03-tables).*
 - A flag that turns warnings into errors.
 
 ## Built for 0.2
@@ -651,6 +652,113 @@ is provisional. [docs/language.md](docs/language.md) describes 0.2 as it is buil
   binaries and a Python package are left out until someone needs them: Python's standard
   library cannot run WebAssembly, so a Python package would need a dependency or a native build
   for each platform. A release's tag is now the only place the language's version is written.
+
+## Designed for 0.3: tables
+
+Drafted 2026-11-17, and not built. 0.2 can read a table and look values up in it, but nothing
+in it changes how many rows a range has once the data is known: there is no filter, sort,
+distinct or stack. Those are the spreadsheet app's general array functions, which a model
+written by hand needs as much as one generated from a query, so 0.3 adds them. Anything that
+can be composed from them, and from what 0.2 already has, is left to whoever writes the `.yup`.
+
+**In scope:** a table type; building a table from columns; `filter`, `sort_by`, `unique` and
+`stack`; and the size variables they need.
+
+**Out of scope:**
+
+- Tables with no rows. A filter that matches nothing shows the app's `#CALC!` in one cell, so a
+  range still has at least one row, as the range model assumes.
+- A blank value or type. A formula can give `""` where it means blank.
+- Text functions beyond 0.2's: a lambda in the file can do what `trim` does not.
+- Rules on a table's columns (data validation), and tables typed into the workbook by its user.
+- Summarising over keys given as lists, and look ups with a default per column. Both can be
+  composed from the rest; see question T6 for summarising over the keys that occur.
+
+### Tables
+
+A table is a range whose columns have names and types. Its type is written like a record type:
+
+```text
+sales : Value { year : Number, region : Text, units : Number } sales_label down
+sales = csv "sales.csv"
+```
+
+- **A table is a type, not a role.** A table read from a file is a `Value`, and one worked out
+  by a formula is a `Formula`, as for any other range. This settles 0.2's open question of a
+  `Table` role.
+- Infer works out a table's type, as it does a cell's, and from Infer on every step writes it
+  into the signature, so an LLM reading the elaborated file sees every column.
+- A table's cells are its values only. Labels name its columns, as in 0.2.
+- **A table is built from columns** with a record of ranges, written `HSTACK`:
+  `{ year = year, units = units * price }`. Every column has the same rows, by size and span.
+  This is what makes a filter of several columns possible: filtered one by one, each column
+  would get a size of its own, and they would not combine.
+- **A column is `t.name`**, short for `column "name" t`, which stays for a column whose name is
+  not a name in `.yup` (question T2).
+
+### Operations
+
+| Operation | Result | Written as |
+|---|---|---|
+| `filter c t` | the rows of `t` where `c`, a column lined up with `t`, holds | `FILTER(t,c)` |
+| `sort_by ks t` | the rows of `t` ordered by the keys `ks`, ties kept in order | `SORTBY(t,…)` |
+| `unique t` | the rows of `t` without repeats, each where it first appears | `UNIQUE(t)` |
+| `stack a b` | the rows of `a`, then those of `b`, which has the same columns | `VSTACK(a,b)` |
+
+Each works on a table or on a range of one column. How the keys of `sort_by` and their
+directions are written is question T1. The app's docs do not say whether SORTBY keeps tied rows
+in their order, so `sort_by` adds the row numbers, `SEQUENCE(ROWS(t))`, as its last key: ties
+then keep their order whatever the app does. `unique` ignores case, as `==` does, because UNIQUE
+does. The function names in the file, with their `_xlfn.` prefixes, are to be confirmed against
+[MS-XLSX] when built.
+
+### Sizes that the data decides
+
+A size variable is either `Fixed` or `Unknown` in 0.2. 0.3 adds a size that a formula's data
+decides, with what is known about it:
+
+- **At most another size:** `filter` and `unique` give at most as many rows as they are given.
+  This is the planned `Maximum` kind.
+- **The same as another size, but not lined up with it:** `sort_by` keeps the number of rows and
+  changes which row is where; `stack` gives the sum of two sizes.
+
+Each such operation introduces a new variable, as `..` does, so that its result never lines up
+by mistake with what it came from: `sort_by k t + t` is refused even though the two have as
+many rows. Where the size it depends on is fixed, as for a table read from a file, the bound is
+a number:
+
+- **Place** may count from the far side of a range whose size is at most a fixed one, landing
+  past the largest it can be, so a total can go below a filtered table read from a file.
+- **Ground** gives a size that is the same as a fixed one its value, so a sorted table of 20
+  rows lays out as 20 rows.
+- **Check** checks a range of bounded size at its bound: nothing within it is a collision, and
+  nothing past it can be spilled into, so there is no warning.
+- **Lower** styles the cells of a bounded range up to its bound, rather than the whole row or
+  column.
+
+Where the size it depends on is unknown, the new size is unknown too, and behaves as 0.2's.
+How these sizes are declared and printed is question T3.
+
+### Open questions for 0.3
+
+- **T1. The keys of `sort_by`.** Option A: `sort_by [ascending t.region, descending t.units] t`,
+  where `ascending` and `descending` make a key. Option B: `sort_by t.region t`, ascending, with
+  `sort_by_descending`, and several keys by sorting more than once, which is correct because
+  every sort keeps ties in order. Option C: a record, `sort_by { region = Ascending, units =
+  Descending } t`, naming columns of `t` only.
+- **T2. `t.name`.** Whether `.` after a name, with no space, is clear enough beside `1.5` and
+  `1 .. n`, and whether a column whose name is not a `.yup` name is renamed when the file is
+  read, or only reached with `column`.
+- **T3. Declaring the new sizes.** For example `k : Size Maximum n` and `k : Size Same n`, or
+  no declaration, with Infer naming them as it names `year_n`.
+- **T4. Columns of different types.** Whether a table may have a column whose type is not one
+  type, such as `""` and numbers, and what its type is then written as.
+- **T5. `stack` of two tables with the same columns in another order:** refused, or matched by
+  name.
+- **T6. Summarising over the keys that occur.** `unique t.region` gives the keys, but `sum_if`
+  gives one number, so there is no way to give one sum for each key without either a lambda
+  inside an expression (0.2's open question) or a function such as `sum_by keys x`, written with
+  BYROW or SUMIFS. Whether that belongs in 0.3.
 
 ## The range model
 
