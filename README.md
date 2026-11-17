@@ -469,9 +469,11 @@ replaced by their values. Running the pipeline on it gives it back unchanged.
 
 - The other values the standard allows and `.yup` does not offer yet: more weights of line (such
   as `mediumDashed`), and the alignments `general`, `fill`, `centerContinuous` and `distributed`.
-- The syntax of an explicit lambda inside an expression.
+- The syntax of an explicit lambda inside an expression. *0.3, as designed: `\x -> e`, as an
+  argument to a function that takes one.*
 - Whether a CSV table gets a role of its own, `Table`, rather than being a kind of `Value`.
-  *0.3, as designed: no; a table is a type. See [Designed for 0.3](#designed-for-03-tables).*
+  *0.3, as designed: no; a table is a type. See
+  [Designed for 0.3](#designed-for-03-tables-and-lambdas).*
 - A flag that turns warnings into errors.
 
 ## Built for 0.2
@@ -653,16 +655,19 @@ is provisional. [docs/language.md](docs/language.md) describes 0.2 as it is buil
   library cannot run WebAssembly, so a Python package would need a dependency or a native build
   for each platform. A release's tag is now the only place the language's version is written.
 
-## Designed for 0.3: tables
+## Designed for 0.3: tables and lambdas
 
 Drafted 2026-11-17, and not built. 0.2 can read a table and look values up in it, but nothing
 in it changes how many rows a range has once the data is known: there is no filter, sort,
 distinct or stack. Those are the spreadsheet app's general array functions, which a model
-written by hand needs as much as one generated from a query, so 0.3 adds them. Anything that
-can be composed from them, and from what 0.2 already has, is left to whoever writes the `.yup`.
+written by hand needs as much as one generated from a query, so 0.3 adds them, with lambdas
+inside expressions to combine them: one total for each key that occurs is a `map` over the
+`unique` keys, not a function of its own. Anything that can be composed from these, and from
+what 0.2 already has, is left to whoever writes the `.yup`.
 
 **In scope:** a table type; building a table from columns; `filter`, `sort_by`, `unique` and
-`stack`; and the size variables they need.
+`stack`; the size variables they need; and lambdas as arguments to `map`, `by_row`,
+`by_column`, `reduce` and `scan`.
 
 **Out of scope:**
 
@@ -671,8 +676,11 @@ can be composed from them, and from what 0.2 already has, is left to whoever wri
 - A blank value or type. A formula can give `""` where it means blank.
 - Text functions beyond 0.2's: a lambda in the file can do what `trim` does not.
 - Rules on a table's columns (data validation), and tables typed into the workbook by its user.
-- Summarising over keys given as lists, and look ups with a default per column. Both can be
-  composed from the rest; see question T6 for summarising over the keys that occur.
+- Summarising, over keys that occur or keys given as lists, and look ups with a default per
+  column: each is composed from the rest.
+- Lambdas as values of their own (a lambda as a `Local` or a `Formula`, or the result of
+  another), `Lambda` bindings that take functions, partial application, and `reduce` or `scan`
+  carrying a range rather than one value, which is what coupled balances would need.
 
 ### Tables
 
@@ -739,6 +747,41 @@ a number:
 Where the size it depends on is unknown, the new size is unknown too, and behaves as 0.2's.
 How these sizes are declared and printed is question T3.
 
+### Lambdas inside expressions
+
+A lambda is written `\x -> e`, or `\x y -> e` with two parameters, as chosen with S3. In 0.3 it
+is only an argument to a built-in function that takes one; a named `Lambda` binding may be
+given there too, as in `map discount years`.
+
+```text
+regions : Formula Text region_label down
+regions = unique sales.region
+
+totals : Formula Number style units regions right 2
+totals = map (\r -> sum_if (sales.region == r) sales.units) regions
+```
+
+| Function | The lambda is given | Result | Written as |
+|---|---|---|---|
+| `map f x` | each value of `x` | one value for each, lined up with `x` | `MAP(x,f)` |
+| `by_row f t` | each row of `t` | one column, lined up with `t`'s rows | `BYROW(t,f)` |
+| `by_column f t` | each column of `t` | one row, lined up with its columns | `BYCOL(t,f)` |
+| `reduce f v x` | the value so far, from `v`, and each of `x` | one value | `REDUCE(v,x,f)` |
+| `scan f v x` | the same | each value so far, lined up with `x` | `SCAN(v,x,f)` |
+
+- **A lambda gives one value each time it is called.** In the app, a lambda given to MAP or
+  BYROW that gives a range shows `#CALC!` when the workbook calculates; here Infer refuses it,
+  with its place in the file, because it already knows the size of every expression.
+- **Its parameters' sizes come from the function:** a value of `map`'s is one cell, and a row of
+  `by_row`'s has the table's columns and their names, so
+  `by_row (\row -> row.units * row.price) sales` is checked against `sales`'s columns.
+- **A lambda may use any binding in the file,** as `sales` above: the app's LAMBDA sees the
+  workbook's defined names and the LET variables around it. Such a range keeps its own size
+  inside the lambda.
+- `map`, `by_row` and `scan` keep their range's span, unlike `sort_by`: position *k* of the
+  result comes from position *k* of what was given, so the result lines up with it.
+- `sum_rows` and `sum_columns` stay, as the common case written short.
+
 ### Open questions for 0.3
 
 - **T1. The keys of `sort_by`.** Option A: `sort_by [ascending t.region, descending t.units] t`,
@@ -755,10 +798,15 @@ How these sizes are declared and printed is question T3.
   type, such as `""` and numbers, and what its type is then written as.
 - **T5. `stack` of two tables with the same columns in another order:** refused, or matched by
   name.
-- **T6. Summarising over the keys that occur.** `unique t.region` gives the keys, but `sum_if`
-  gives one number, so there is no way to give one sum for each key without either a lambda
-  inside an expression (0.2's open question) or a function such as `sum_by keys x`, written with
-  BYROW or SUMIFS. Whether that belongs in 0.3.
+- **T6. Summarising over the keys that occur.** *Settled 2026-11-17: with lambdas, above, as
+  `map (\r -> sum_if (t.region == r) t.units) (unique t.region)`, and no function of its own.*
+- **L1. Which way a lambda is given a range.** Whether `by_row` and `by_column` are worth two
+  names, or `by across` and `by down` follow `lag`.
+- **L2. A lambda's parameters.** Each is a LAMBDA parameter in the workbook, with the `_xlpm.`
+  prefix, and follows the rules for names, as a `Lambda`'s do. Whether it may hide a binding of
+  the same name, as a `Lambda`'s parameter may.
+- **L3. Errors inside a lambda.** How a message names both the size of a range from outside the
+  lambda and the size of a parameter, so that a mismatch between them is clear.
 
 ## The range model
 
