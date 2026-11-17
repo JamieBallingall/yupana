@@ -1,7 +1,7 @@
-# yupana_r
+# yupana
 
-Working name: **yupana_r**. The repository is `yupana_r`; the project and crate names are not
-decided. There is an existing **yupana** repo which this will eventually replace.
+The project is **yupana**, and so is the repository: it replaced an earlier yupana, now retired,
+on 2026-11-17. The names of the crates and the command are not decided.
 
 > **Seed capsule,** drafted 2026-10-14. This is a design record, not documentation of code. A
 > first version of the whole pipeline, `.yup` 0.1, was built on 2026-10-14 to try the design end to
@@ -982,7 +982,8 @@ Where 0.1 or 0.2 gives an answer, it follows in italics; [Built for 0.1](#built-
 11. **The file:** keep the `.yup` extension? Either way, the first line identifies the version, so
     each reader refuses the other format's files. *0.1: `.yup`, and the first line is `yup 0.1`.
     0.2: `.yup`, and `yup 0.2`; a reader of 0.2 refuses 0.1.*
-12. **Names:** of the project and its crates.
+12. **Names:** of the project and its crates. *2026-11-17: the project is yupana; the crates
+    and the command keep their provisional names, `yup-core`, `yup-cli` and `yup`.*
 13. **Exporting bindings:** whether a shown binding can stay unexported, and whether a local one
     becomes a LET variable rather than being repeated. *0.1: every shown binding is a defined
     name, formulas use those names, and a local binding is written where it is used. 0.2: a
