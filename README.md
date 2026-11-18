@@ -858,8 +858,9 @@ totals = map (\r -> sum_if (sales.region == r) sales.units) regions
   refused, as under Operations. Matching by name would write a reordering the file never says.*
 - **T6. Summarising over the keys that occur.** *Settled 2026-11-17: with lambdas, above, as
   `map (\r -> sum_if (t.region == r) t.units) (unique t.region)`, and no function of its own.*
-- **L1. Which way a lambda is given a range.** Whether `by_row` and `by_column` are worth two
-  names, or `by across` and `by down` follow `lag`.
+- **L1. Which way a lambda is given a range.** *Settled 2026-11-17: two names, `by_row` and
+  `by_column`, as `sum_rows` and `sum_columns` are, and as the app names BYROW and BYCOL. In
+  `by down`, `down` could name either the rows or the way the results go.*
 - **L2. A lambda's parameters.** Each is a LAMBDA parameter in the workbook, with the `_xlpm.`
   prefix, and follows the rules for names, as a `Lambda`'s do. Whether it may hide a binding of
   the same name, as a `Lambda`'s parameter may.
