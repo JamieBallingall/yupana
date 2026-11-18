@@ -768,7 +768,30 @@ a number:
   column.
 
 Where the size it depends on is unknown, the new size is unknown too, and behaves as 0.2's.
-How these sizes are declared and printed is question T3.
+
+**Each is declared** (decided 2026-11-17, question T3), as 0.2 declares `n : Size Unknown`, and
+the signature of the binding whose cells have it names it in `size`, as 0.2's do:
+
+```text
+big_n : Size Maximum sales_n
+big = filter (sales.units > 100) sales
+
+ranked_n : Size Same big_n
+ranked = sort_by_descending big.units big
+```
+
+- `Size Maximum n` is made by `filter` or `unique` of a range with `n` rows, and `Size Same n`
+  by `sort_by` or `sort_by_descending`. `stack` of ranges with `a` and `b` rows makes
+  `Size Same a + b`.
+- Each declared size names exactly one operation, as each 0.2 size names one `..`, and Infer
+  checks that its kind and its `n` are what that operation makes. `Size Same sales_n` for
+  `big` is refused, with both places in the message.
+- A size that reaches a binding's cells must be declared, and the error for one that is not
+  gives the line to add, such as `big_n : Size Maximum sales_n`. A size that stays inside an
+  expression, as in `sum (filter c sales.units)`, needs no declaration.
+- The rows of a table read from a file are named as 0.2 names a size no signature names, after
+  its binding, so `sales` has `sales_n` rows. Every size the data decides is in the file, and
+  `yup show` prints them as written.
 
 ### Lambdas inside expressions
 
@@ -813,8 +836,9 @@ totals = map (\r -> sum_if (sales.region == r) sales.units) regions
 - **T2. `t.name`.** *Settled 2026-11-17: headers become names when a file is read, by the rule
   under Tables, and `t.name` replaces `column`. Reaching a column only with `column` left two
   ways to name one.*
-- **T3. Declaring the new sizes.** For example `k : Size Maximum n` and `k : Size Same n`, or
-  no declaration, with Infer naming them as it names `year_n`.
+- **T3. Declaring the new sizes.** *Settled 2026-11-17: declared, as `Size Maximum n` and
+  `Size Same n`, wherever a binding's cells have one, as above. Inferred names would have kept
+  the file short, but left errors naming sizes that the file never mentions.*
 - **T4. Columns of different types.** Whether a table may have a column whose type is not one
   type, such as `""` and numbers, and what its type is then written as.
 - **T5. `stack` of two tables with the same columns in another order:** refused, or matched by
