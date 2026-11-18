@@ -818,13 +818,14 @@ Decided while building, 2026-11-17:
   VSTACK, HSTACK, MAP, BYROW, BYCOL, REDUCE, SCAN and LAMBDA are in its
   `future-function-list`, so each is written with `_xlfn.`, as SEQUENCE, LET, TAKE and DROP
   already were.
-- **Open: how many arguments FILTER and MAP take.** The grammar's `filter-worksheet-params`
-  asks for three or four arguments, and its `map-params` for at least three. The app's
-  documentation gives `FILTER(array,include,[if_empty])` and `MAP(array1,lambda_or_array<#>)`,
-  two or more for each, and `filter` and `map` write two. The sources disagree, so this is
-  recorded rather than guessed at. `FILTER(t,keep,)`, with an empty third argument, which the
-  grammar's `argument` allows, would satisfy both for FILTER; no form of MAP's two arguments
-  would satisfy the grammar.
+- **How many arguments FILTER and MAP take.** The grammar's `filter-worksheet-params` asks for
+  three or four arguments, and its `map-params` for at least three. The app's documentation
+  gives `FILTER(array,include,[if_empty])` and `MAP(array1,lambda_or_array<#>)`, two or more for
+  each. `FILTER(t,keep,)`, with an empty third argument, which the grammar's `argument` allows,
+  would satisfy both for FILTER, but no form of MAP's two arguments would satisfy the grammar.
+  *Settled 2026-11-18: two, as the app's documentation gives them. The workbook that
+  `examples/orders.yup` builds writes both; it opens in the spreadsheet app without an offer of
+  repair, and its figures agree with the file's, worked out by hand.*
 - `stack` of a table and a range without named columns is refused: the result's columns would
   have names for only part of its rows.
 - A sort writes its table twice, once to sort and once to count its rows. LET would write it
