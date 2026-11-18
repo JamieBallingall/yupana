@@ -1,0 +1,107 @@
+// Orders of an invented tea wholesaler, read from orders.csv beside this file, summarised as a
+// table would be by a query: the revenue of each order, the revenue of each region, and the
+// large orders, largest first. The file's headers become the columns' names, so `Unit Price`
+// is `unit_price`.
+
+workbook : Workbook
+workbook = { sheets = [summary, orders_sheet] }
+
+summary : Sheet
+summary = { name = 'Summary' }
+
+orders_sheet : Sheet
+orders_sheet = { name = 'Orders' }
+
+label : Style Cell
+label = { format = '@' }
+
+heading : Style Cell
+heading = label { font = { bold = True }, border = { bottom = { weight = Thin } } }
+
+money : Style Cell
+money = { format = '#,##0.00' }
+
+total : Style Cell
+total = money { font = { bold = True }, border = { top = { weight = Thin } } }
+
+// Orders: the table as the file has it, and the revenue of each order beside it, one value for
+// each row.
+
+month_header : Label style heading at orders_sheet $B$2
+month_header = "Month"
+
+region_header : Label style heading month_header right
+region_header = "Region"
+
+product_header : Label style heading region_header right
+product_header = "Product"
+
+units_header : Label style heading product_header right
+units_header = "Units"
+
+price_header : Label style heading units_header right
+price_header = "Unit price"
+
+revenue_header : Label style heading price_header right
+revenue_header = "Revenue"
+
+orders : Value month_header down
+orders = csv "orders.csv"
+
+revenue : Formula style money revenue_header down
+revenue = by_row (\order -> order.units * order.unit_price) orders
+
+// Summary: the total first, since a binding placed below the regions would go below the most
+// there can be, one for each order. Then each region once, as UNIQUE finds them, ignoring case,
+// so `south` is `South`, and the revenue of each, by a lambda over the regions.
+
+total_label : Label style label at summary $B$2
+total_label = "Total revenue"
+
+total_revenue : Formula style total total_label right
+total_revenue = sum revenue
+
+summary_region_header : Label style heading total_label down 2
+summary_region_header = "Region"
+
+summary_revenue_header : Label style heading summary_region_header right
+summary_revenue_header = "Revenue"
+
+regions_n : Size Maximum orders_n
+regions : Formula size [regions_n, 1] summary_region_header down
+regions = unique orders.region
+
+region_revenue : Formula style money summary_revenue_header down
+region_revenue = map (\key -> sum_if (orders.region == key) revenue) regions
+
+// The large orders, largest first. Each is a size the data decides, declared here, at most and
+// then as many as the orders.
+
+large_month_header : Label style heading summary_revenue_header right 2
+large_month_header = "Month"
+
+large_region_header : Label style heading large_month_header right
+large_region_header = "Region"
+
+large_product_header : Label style heading large_region_header right
+large_product_header = "Product"
+
+large_units_header : Label style heading large_product_header right
+large_units_header = "Units"
+
+// The columns the summary shows, as a table of their own.
+picked : Local
+picked = {
+  month = orders.month,
+  region = orders.region,
+  product = orders.product,
+  units = orders.units
+}
+
+large_n : Size Maximum orders_n
+large : Local size [large_n, 4]
+large = filter (picked.units >= 40) picked
+
+largest_n : Size Same large_n
+largest : Formula size [largest_n, 4] large_month_header down
+largest = sort_by_descending large.units large

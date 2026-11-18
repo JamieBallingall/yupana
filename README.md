@@ -901,6 +901,10 @@ Decided while building lambdas, 2026-11-18:
   with the rest before 0.3 is released.
 - A parameter whose type Infer cannot tell, such as a value of a range of mixed types, is
   checked as anything, as 0.2 checks a binding of mixed types.
+- A binding placed below a range the data decides goes below its bound, which can leave many
+  empty rows: three regions of ten orders leave seven. `examples/orders.yup` puts its total
+  above the regions for that reason. A record given to a function is written in parentheses,
+  or as a `Local` of its own, as any other argument that is not an atom.
 
 ## The range model
 

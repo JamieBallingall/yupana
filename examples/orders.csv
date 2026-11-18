@@ -1,0 +1,11 @@
+Month,Region,Product,Units,Unit Price
+Jan,North,Green tea,40,3.5
+Jan,South,Black tea,25,3
+Jan,West,Oolong,12,5.25
+Feb,North,Black tea,55,3
+Feb,South,Green tea,30,3.5
+Feb,West,Green tea,48,3.5
+Mar,North,Oolong,20,5.25
+Mar,South,Black tea,62,3
+Mar,West,Black tea,35,3
+Mar,south,Oolong,18,5.25
