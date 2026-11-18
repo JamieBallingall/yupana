@@ -701,8 +701,20 @@ sales = csv "sales.csv"
   `{ year = year, units = units * price }`. Every column has the same rows, by size and span.
   This is what makes a filter of several columns possible: filtered one by one, each column
   would get a size of its own, and they would not combine.
-- **A column is `t.name`**, short for `column "name" t`, which stays for a column whose name is
-  not a name in `.yup` (question T2).
+- **A column is `t.name`**, written with no space around the `.`, which a number such as `1.5`
+  or a span such as `1 .. n` never is. It replaces 0.2's `column "name" t`, so that there is one
+  way to name a column.
+- **A file's headers become names when it is read** (decided 2026-11-17, question T2), by a rule
+  small enough to do by hand: letters go to lower case, each run of anything other than a letter
+  or a digit becomes one `_`, an `_` at either end is dropped, and a name that would start with a
+  digit starts with `col_`. So `Unit Price` is `unit_price`, `% of total` is `of_total`, and
+  `2025` is `col_2025`. A column's name follows the rules for a record's field, not those for a
+  defined name, since it is never written into the workbook: `sum` and `size` are columns like
+  any other.
+- The file is refused, at the header's line and column, where a header holds a letter outside
+  ASCII, has nothing that would be left, or gives the same name as another header, as
+  `Unit Price` and `unit-price` do. Its writer renames the header: a transliteration table is
+  more than the rule should hold.
 
 ### Operations
 
@@ -798,9 +810,9 @@ totals = map (\r -> sum_if (sales.region == r) sales.units) regions
 - **T1. The keys of `sort_by`.** *Settled 2026-11-17: one key per sort, with `sort_by` and
   `sort_by_descending`, and several keys by sorting more than once, as above. A list of keys
   needed a new kind of value, and a record of directions could not sort by a computed key.*
-- **T2. `t.name`.** Whether `.` after a name, with no space, is clear enough beside `1.5` and
-  `1 .. n`, and whether a column whose name is not a `.yup` name is renamed when the file is
-  read, or only reached with `column`.
+- **T2. `t.name`.** *Settled 2026-11-17: headers become names when a file is read, by the rule
+  under Tables, and `t.name` replaces `column`. Reaching a column only with `column` left two
+  ways to name one.*
 - **T3. Declaring the new sizes.** For example `k : Size Maximum n` and `k : Size Same n`, or
   no declaration, with Infer naming them as it names `year_n`.
 - **T4. Columns of different types.** Whether a table may have a column whose type is not one
