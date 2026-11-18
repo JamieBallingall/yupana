@@ -753,7 +753,7 @@ Reordering is one line, `{ year = b.year, units = b.units }`, and keeps the form
 file says.
 
 `unique` ignores case, as `==` does, because UNIQUE does. The function names in the file, with
-their `_xlfn.` prefixes, are to be confirmed against [MS-XLSX] when built.
+their prefixes, are checked against [MS-XLSX] §2.2.2; see the note on prefixes below.
 
 ### Sizes that the data decides
 
@@ -813,9 +813,18 @@ Decided while building, 2026-11-17:
 - A formula cannot use the value of a size the data decides, as it cannot an unknown size's.
 - Ground keeps a size the data decides by name in the file it prints, so that the file reads
   the same when run again, and lays its cells out at its bound.
-- `filter` is written `_xlfn._xlws.FILTER`, and the rest `_xlfn.SORTBY`, `_xlfn.UNIQUE`,
-  `_xlfn.VSTACK` and `_xlfn.HSTACK`. These prefixes are to be confirmed against [MS-XLSX]
-  §2.2.2 before 0.3 is released.
+- **Prefixes, checked 2026-11-18 against [MS-XLSX] §2.2.2.** FILTER is in the grammar's
+  `worksheet-only-function-list`, so it is written `_xlfn._xlws.FILTER`. SORTBY, UNIQUE,
+  VSTACK, HSTACK, MAP, BYROW, BYCOL, REDUCE, SCAN and LAMBDA are in its
+  `future-function-list`, so each is written with `_xlfn.`, as SEQUENCE, LET, TAKE and DROP
+  already were.
+- **Open: how many arguments FILTER and MAP take.** The grammar's `filter-worksheet-params`
+  asks for three or four arguments, and its `map-params` for at least three. The app's
+  documentation gives `FILTER(array,include,[if_empty])` and `MAP(array1,lambda_or_array<#>)`,
+  two or more for each, and `filter` and `map` write two. The sources disagree, so this is
+  recorded rather than guessed at. `FILTER(t,keep,)`, with an empty third argument, which the
+  grammar's `argument` allows, would satisfy both for FILTER; no form of MAP's two arguments
+  would satisfy the grammar.
 - `stack` of a table and a range without named columns is refused: the result's columns would
   have names for only part of its rows.
 - A sort writes its table twice, once to sort and once to count its rows. LET would write it
@@ -896,9 +905,8 @@ Decided while building lambdas, 2026-11-18:
 - A table read from a file has a number of rows, so a message about it says `3 rows`, not
   `sales_n rows`, except in a declaration of a size the data decides.
 - A lambda given to `map` and the others is written into the formula as `_xlfn.LAMBDA(…)`, and a
-  `Lambda` of the file by its defined name. `_xlfn.MAP`, `_xlfn.BYROW`, `_xlfn.BYCOL`,
-  `_xlfn.REDUCE`, `_xlfn.SCAN` and `_xlfn.LAMBDA` are to be confirmed against [MS-XLSX] §2.2.2
-  with the rest before 0.3 is released.
+  `Lambda` of the file by its defined name, each function with the prefix the note on prefixes
+  above gives it.
 - A parameter whose type Infer cannot tell, such as a value of a range of mixed types, is
   checked as anything, as 0.2 checks a binding of mixed types.
 - A binding placed below a range the data decides goes below its bound, which can leave many
