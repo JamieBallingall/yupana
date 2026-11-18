@@ -709,16 +709,27 @@ sales = csv "sales.csv"
 | Operation | Result | Written as |
 |---|---|---|
 | `filter c t` | the rows of `t` where `c`, a column lined up with `t`, holds | `FILTER(t,c)` |
-| `sort_by ks t` | the rows of `t` ordered by the keys `ks`, ties kept in order | `SORTBY(t,…)` |
+| `sort_by k t` | the rows of `t` by the key `k` going up, ties kept in order | `SORTBY(t,k,1,…)` |
+| `sort_by_descending k t` | the same, by `k` going down | `SORTBY(t,k,-1,…)` |
 | `unique t` | the rows of `t` without repeats, each where it first appears | `UNIQUE(t)` |
 | `stack a b` | the rows of `a`, then those of `b`, which has the same columns | `VSTACK(a,b)` |
 
-Each works on a table or on a range of one column. How the keys of `sort_by` and their
-directions are written is question T1. The app's docs do not say whether SORTBY keeps tied rows
-in their order, so `sort_by` adds the row numbers, `SEQUENCE(ROWS(t))`, as its last key: ties
-then keep their order whatever the app does. `unique` ignores case, as `==` does, because UNIQUE
-does. The function names in the file, with their `_xlfn.` prefixes, are to be confirmed against
-[MS-XLSX] when built.
+Each works on a table or on a range of one column. A key is a column lined up with `t`. The
+app's docs do not say whether SORTBY keeps tied rows in their order, so both sorts add the row
+numbers, `SEQUENCE(ROWS(t))`, as their last key: ties then keep their order whatever the app
+does. That makes several keys a matter of sorting more than once, the last key first, with no
+syntax of its own (decided 2026-11-17, question T1):
+
+```text
+by_units = sort_by_descending sales.units sales
+ranked = sort_by by_units.region by_units
+```
+
+`ranked` is by region, and within a region by units going down. The second key comes from
+`by_units`, not `sales`, because a sort's result does not line up with what it sorted.
+
+`unique` ignores case, as `==` does, because UNIQUE does. The function names in the file, with
+their `_xlfn.` prefixes, are to be confirmed against [MS-XLSX] when built.
 
 ### Sizes that the data decides
 
@@ -784,11 +795,9 @@ totals = map (\r -> sum_if (sales.region == r) sales.units) regions
 
 ### Open questions for 0.3
 
-- **T1. The keys of `sort_by`.** Option A: `sort_by [ascending t.region, descending t.units] t`,
-  where `ascending` and `descending` make a key. Option B: `sort_by t.region t`, ascending, with
-  `sort_by_descending`, and several keys by sorting more than once, which is correct because
-  every sort keeps ties in order. Option C: a record, `sort_by { region = Ascending, units =
-  Descending } t`, naming columns of `t` only.
+- **T1. The keys of `sort_by`.** *Settled 2026-11-17: one key per sort, with `sort_by` and
+  `sort_by_descending`, and several keys by sorting more than once, as above. A list of keys
+  needed a new kind of value, and a record of directions could not sort by a computed key.*
 - **T2. `t.name`.** Whether `.` after a name, with no space, is clear enough beside `1.5` and
   `1 .. n`, and whether a column whose name is not a `.yup` name is renamed when the file is
   read, or only reached with `column`.
