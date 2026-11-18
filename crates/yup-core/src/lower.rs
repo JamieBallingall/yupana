@@ -414,7 +414,7 @@ impl Lowerer<'_> {
                     self.with_lets(&roots, &[], |lets| self.definition_formula(binding, lets))?;
                 within_limits(b, &formula)?;
                 put(cells, (row, column), Value::Formula(formula.text), style);
-                let shape = &self.grounded.shapes[binding];
+                let shape = &self.grounded.extents[binding];
                 let rows = shape.rows.size.as_constant();
                 let columns = shape.columns.size.as_constant();
                 if style != 0 {
@@ -673,7 +673,7 @@ impl Lowerer<'_> {
 
     /// What a formula's or a value's defined name refers to.
     fn reference(&self, binding: usize, sheet: &str, (row, column): At) -> String {
-        let shape = &self.grounded.shapes[binding];
+        let shape = &self.grounded.extents[binding];
         let sheet = sheet_reference(sheet);
         let start = absolute(to_u32(row), to_u32(column));
         let rows = shape.rows.size.as_constant();
@@ -1069,7 +1069,7 @@ impl Lowerer<'_> {
             }
             let sig = self.model.signature(self.program, binding);
             let (row, column) = self.grounded.anchors[&binding];
-            let shape = &self.grounded.shapes[binding];
+            let shape = &self.grounded.extents[binding];
             let lines = |first: i64, size: Option<i64>| {
                 let count = size.expect("Check refuses a size on a range of unknown extent");
                 to_u32(first)..to_u32(first + count)

@@ -68,11 +68,32 @@ pub enum VarKind {
     Unknown,
 }
 
+/// What is known of a size that a formula's data decides, beside the size it depends on.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Bound {
+    /// At most that size: what `filter` gives.
+    Maximum,
+    /// As large as that size, but not lined up with it: what a sort gives.
+    Same,
+}
+
+impl Bound {
+    fn word(self) -> &'static str {
+        match self {
+            Bound::Maximum => "Maximum",
+            Bound::Same => "Same",
+        }
+    }
+}
+
 /// A size variable, declared in the file or introduced by `a .. b`.
 #[derive(Clone, Debug)]
 pub struct Var {
     pub name: String,
     pub kind: VarKind,
+    /// For a size the data decides, the most it can be, where that is known when the file is
+    /// written: its cells are laid out, checked and styled as that many.
+    pub bound: Option<i64>,
     /// For a size that no declaration names, the binding whose definition introduced it.
     pub introduced_by: Option<usize>,
 }
@@ -117,6 +138,15 @@ impl Typed {
         }
     }
 
+    /// The value a size is laid out as: a fixed size's own, or the bound of a size the data
+    /// decides.
+    pub fn layout(&self, var: usize) -> Option<i64> {
+        match self.vars[var].kind {
+            VarKind::Fixed(value) => Some(value),
+            VarKind::Unknown => self.vars[var].bound,
+        }
+    }
+
     /// A size as `.yup` writes it.
     pub fn format(&self, size: &SizeExpr) -> String {
         size.format(|var| self.vars[var].name.clone())
@@ -139,6 +169,17 @@ struct VarState {
     named: Option<usize>,
     pos: Pos,
     binding: Option<usize>,
+    /// For a size the data decides, what is known of it.
+    bound: Option<Bounded>,
+}
+
+/// What is known of a size the data decides: the size it depends on, and how a message names
+/// that size, as its declaration would write it.
+#[derive(Clone)]
+struct Bounded {
+    bound: Bound,
+    of: SizeExpr,
+    text: String,
 }
 
 struct Infer<'a> {
@@ -201,13 +242,14 @@ pub fn infer(program: &Program, model: &Model) -> Result<Typed, Vec<Diagnostic>>
                 SizeKind::Fixed => {
                     VarKind::Fixed(size.value.expect("Resolve gives every fixed size a value"))
                 }
-                SizeKind::Unknown => VarKind::Unknown,
+                SizeKind::Unknown | SizeKind::Maximum(_) | SizeKind::Same(_) => VarKind::Unknown,
             },
             declared: true,
             alias: None,
             named: None,
             pos: size.pos,
             binding: None,
+            bound: None,
         })
         .collect();
     let mut infer = Infer {
@@ -226,6 +268,31 @@ pub fn infer(program: &Program, model: &Model) -> Result<Typed, Vec<Diagnostic>>
         tables: vec![None; model.bindings.len()],
         columns: BTreeMap::new(),
     };
+    for (var, size) in model.sizes.iter().enumerate() {
+        let bound = match &size.kind {
+            SizeKind::Maximum(_) => Bound::Maximum,
+            SizeKind::Same(_) => Bound::Same,
+            SizeKind::Fixed | SizeKind::Unknown => continue,
+        };
+        let written = size
+            .kind
+            .of()
+            .expect("a size the data decides depends on another");
+        match infer.depends_on(var, written) {
+            Ok(of) => {
+                infer.vars[var].bound = Some(Bounded {
+                    bound,
+                    of,
+                    text: crate::printer::size(written),
+                });
+            }
+            Err(error) => infer.errors.push(error),
+        }
+    }
+    // A declaration that cannot be read would only mislead what follows.
+    if !infer.errors.is_empty() {
+        return Err(infer.errors);
+    }
     for &binding in &model.order {
         match model.recurrence_of(binding) {
             // A recurrence's members come together in the order, and are inferred together.
@@ -324,8 +391,81 @@ impl Infer<'_> {
             named: None,
             pos,
             binding: Some(self.current),
+            bound: None,
         });
         SizeExpr::var(self.vars.len() - 1)
+    }
+
+    /// A new size that the data decides, which a declaration must name.
+    fn fresh_bounded(&mut self, pos: Pos, bound: Bound, from: &Expr, of: SizeExpr) -> SizeExpr {
+        // A table read from a file has as many rows as it has records, a number; a declaration
+        // names them after the table, so a message does too.
+        let text = match &from.kind {
+            ExprKind::Name(name)
+                if matches!(self.model.symbols.get(name),
+                    Some(Symbol::Binding(binding)) if self.model.tables.contains_key(binding)) =>
+            {
+                format!("{name}_n")
+            }
+            _ => self.show(&of),
+        };
+        let size = self.fresh(pos);
+        let var = self.vars.len() - 1;
+        self.vars[var].bound = Some(Bounded { bound, of, text });
+        size
+    }
+
+    /// The size that the declared size `var` depends on, as its declaration writes it: sizes
+    /// declared above it, and a table read from a file by its rows, `sales_n`.
+    fn depends_on(&self, var: usize, syntax: &SizeSyntax) -> Result<SizeExpr, Diagnostic> {
+        let mut constant = syntax.constant;
+        let mut terms = Vec::new();
+        for (coefficient, ident) in &syntax.terms {
+            match self.model.symbols.get(&ident.name) {
+                Some(Symbol::Size(other)) if *other < var => {
+                    terms.push((*other, *coefficient));
+                    continue;
+                }
+                Some(Symbol::Size(_)) => {
+                    return Err(Diagnostic::error(
+                        ident.pos,
+                        format!(
+                            "`{}` is declared below; a size the data decides depends on sizes \
+                             declared above it",
+                            ident.name
+                        ),
+                    ));
+                }
+                _ => {
+                    let rows = ident
+                        .name
+                        .strip_suffix("_n")
+                        .and_then(|table| match self.model.symbols.get(table) {
+                            Some(Symbol::Binding(binding)) => self.model.tables.get(binding),
+                            _ => None,
+                        })
+                        .map(|table| count(table.rows.len()));
+                    let Some(rows) = rows else {
+                        return Err(Diagnostic::error(
+                            ident.pos,
+                            format!(
+                                "unknown size `{}`; a size the data decides depends on a size \
+                                 declared above it, or on the rows of a table read from a file, \
+                                 as `sales_n` for `sales`",
+                                ident.name
+                            ),
+                        ));
+                    };
+                    constant += coefficient * rows;
+                }
+            }
+        }
+        Ok(SizeExpr::from_parts(constant, terms))
+    }
+
+    /// How a size the data decides is declared, for a message: `Size Maximum 20`.
+    fn bound_text(bounded: &Bounded) -> String {
+        format!("Size {} {}", bounded.bound.word(), bounded.text)
     }
 
     fn binding(&mut self, binding: usize) {
@@ -736,6 +876,33 @@ impl Infer<'_> {
                     columns: x.rows,
                 })
             }
+            Builtin::Filter => {
+                let keep = self.shape(&args[0])?;
+                let table = self.shape(&args[1])?;
+                let lined_up = self.is_one(&keep.columns.size)
+                    && self.same(&keep.rows.size, &table.rows.size)
+                    && keep.rows.start == table.rows.start;
+                if !lined_up {
+                    let this = if self.is_one(&keep.columns.size) {
+                        format!("this covers rows {}", self.positions(&keep.rows))
+                    } else {
+                        format!("this has {} columns", self.show(&keep.columns.size))
+                    };
+                    return Err(fail(
+                        args[0].pos,
+                        format!(
+                            "`filter` keeps the rows where one column lined up with them holds: \
+                             the table covers rows {}, and {this}",
+                            self.positions(&table.rows)
+                        ),
+                    ));
+                }
+                let rows = self.fresh_bounded(expr.pos, Bound::Maximum, &args[1], table.rows.size);
+                Ok(Shape {
+                    rows: Extent::of(rows),
+                    columns: Extent::of(table.columns.size),
+                })
+            }
             Builtin::Lookup => {
                 let key = self.shape(&args[0])?;
                 let keys = self.shape(&args[1])?;
@@ -1108,6 +1275,36 @@ impl Infer<'_> {
             self.vars[var].named = Some(introduced);
             return Ok(declared);
         }
+        if let ([(var, 1)], [(introduced, 1)]) = (
+            declared.terms().collect::<Vec<_>>().as_slice(),
+            inferred
+                .rename(|var| self.canonical(var))
+                .terms()
+                .collect::<Vec<_>>()
+                .as_slice(),
+        ) && self.vars[*var].declared
+            && !self.vars[*introduced].declared
+            && self.vars[*var].named.is_none()
+        {
+            let says = |state: &VarState| match &state.bound {
+                Some(bounded) => format!("`{}`", Self::bound_text(bounded)),
+                None => "`Size Unknown`".to_string(),
+            };
+            let (declared_var, introduced_var) = (&self.vars[*var], &self.vars[*introduced]);
+            if declared_var.bound.is_some() || introduced_var.bound.is_some() {
+                return Err(Diagnostic::error(
+                    written.pos,
+                    format!(
+                        "`{}` is declared {} at {}, and the size made at {} is {}",
+                        self.var_name(*var),
+                        says(declared_var),
+                        declared_var.pos,
+                        introduced_var.pos,
+                        says(introduced_var)
+                    ),
+                ));
+            }
+        }
         let taken = declared
             .terms()
             .find_map(|(var, _)| self.vars[var].named.map(|introduced| (var, introduced)));
@@ -1146,10 +1343,16 @@ impl Infer<'_> {
             return None;
         };
         let declared_var = &self.vars[var];
+        let bounds_agree = match (&declared_var.bound, &self.vars[introduced].bound) {
+            (None, None) => true,
+            (Some(a), Some(b)) => a.bound == b.bound && self.same(&a.of, &b.of),
+            _ => false,
+        };
         let ok = declared_var.declared
             && declared_var.kind == VarKind::Unknown
             && declared_var.named.is_none()
             && !self.vars[introduced].declared
+            && bounds_agree
             && declared.constant_part() == inferred.constant_part();
         ok.then_some((var, introduced))
     }
@@ -1479,6 +1682,9 @@ impl Infer<'_> {
         params: &BTreeMap<String, CellType>,
     ) -> Option<Vec<TableColumn>> {
         match &expr.kind {
+            ExprKind::Apply { func, args, .. } if func.name == "filter" && args.len() == 2 => {
+                self.table(&args[1], params)
+            }
             ExprKind::Record(fields) => Some(
                 fields
                     .iter()
@@ -1506,15 +1712,50 @@ impl Infer<'_> {
             for var in &self.vars {
                 if var.declared && var.kind == VarKind::Unknown && var.named.is_none() {
                     let name = var.name.as_deref().unwrap_or_default();
+                    let made = if var.bound.is_some() {
+                        "made by `filter`, such as `big : Formula size [big_n, 2] …`".to_string()
+                    } else {
+                        format!(
+                            "made with `..`, such as `year : Formula Number size [1, {name}] …`"
+                        )
+                    };
                     self.errors.push(Diagnostic::error(
                         var.pos,
                         format!(
                             "nothing has the size `{name}`: name it in the signature of a range \
-                             made with `..`, such as `year : Formula Number size [1, {name}] …`"
+                             {made}"
                         ),
                     ));
                 }
             }
+            // A size the data decides is declared wherever a binding's cells have it.
+            let mut unnamed_sizes = Vec::new();
+            for (binding, shape) in self.shapes.iter().enumerate() {
+                let Some(shape) = shape else { continue };
+                if !self.model.bindings[binding].role.is_placed() {
+                    continue;
+                }
+                for size in [&shape.rows.size, &shape.columns.size] {
+                    let unnamed = size
+                        .terms()
+                        .map(|(var, _)| self.canonical(var))
+                        .find(|&var| !self.vars[var].declared && self.vars[var].bound.is_some());
+                    if let Some(var) = unnamed {
+                        let bounded = self.vars[var].bound.clone().expect("found above");
+                        let name = &self.model.bindings[binding].name;
+                        let message = format!(
+                            "the cells of `{name}` have the size made here, which a declaration \
+                             names: add `{name}_n : {}` and name it in `{name}`'s signature",
+                            Self::bound_text(&bounded)
+                        );
+                        let error = Diagnostic::error(self.vars[var].pos, message);
+                        if !unnamed_sizes.contains(&error) {
+                            unnamed_sizes.push(error);
+                        }
+                    }
+                }
+            }
+            self.errors.extend(unnamed_sizes);
         }
         if !self.errors.is_empty() {
             return Err(self.errors);
@@ -1566,10 +1807,29 @@ impl Infer<'_> {
                 }
             })
             .collect();
+        // A size the data decides is laid out as the most it can be, where that is known.
+        let mut layout: Vec<Option<i64>> = Vec::with_capacity(self.vars.len());
+        for var in &self.vars {
+            let value = match (var.kind, &var.bound) {
+                (VarKind::Fixed(value), _) => Some(value),
+                (VarKind::Unknown, Some(bounded)) => bounded
+                    .of
+                    .rename(|v| canonical[v])
+                    .substitute(|v| layout.get(v).copied().flatten())
+                    .as_constant(),
+                (VarKind::Unknown, None) => None,
+            };
+            layout.push(value);
+        }
         let vars = self
             .vars
             .into_iter()
-            .map(|var| Var {
+            .zip(layout)
+            .map(|(var, layout)| Var {
+                bound: match var.kind {
+                    VarKind::Fixed(_) => None,
+                    VarKind::Unknown => layout,
+                },
                 introduced_by: if var.declared || var.alias.is_some() {
                     None
                 } else {

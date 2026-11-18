@@ -110,7 +110,7 @@ pub fn check(
             .filter(|&&binding| model.bindings[binding].sheet == Some(sheet))
             .map(|&binding| {
                 let (top, left) = grounded.anchors[&binding];
-                let shape = &grounded.shapes[binding];
+                let shape = &grounded.extents[binding];
                 Rect {
                     top,
                     left,

@@ -6,7 +6,7 @@
 use crate::cells::{self, cell_name};
 use crate::syntax::{
     BinOp, CellType, Expr, ExprKind, Field, Item, ItemKind, Placement, Program, Signature,
-    SizeKind, SizeSyntax, Type,
+    SizeSyntax, Type,
 };
 
 /// The widest line the printer writes a record on before it gives each field a line of its own.
@@ -43,13 +43,10 @@ fn item_text(item: &Item) -> String {
     match &item.kind {
         ItemKind::Blank => String::new(),
         ItemKind::Comment(text) => format!("//{text}"),
-        ItemKind::Size { name, kind } => {
-            let kind = match kind {
-                SizeKind::Fixed => "Fixed",
-                SizeKind::Unknown => "Unknown",
-            };
-            format!("{} : Size {kind}", name.name)
-        }
+        ItemKind::Size { name, kind } => match kind.of() {
+            Some(of) => format!("{} : Size {} {}", name.name, kind.word(), size(of)),
+            None => format!("{} : Size {}", name.name, kind.word()),
+        },
         ItemKind::Signature(sig) => signature(sig),
         ItemKind::Definition { name, params, expr } => {
             let mut head = name.name.clone();

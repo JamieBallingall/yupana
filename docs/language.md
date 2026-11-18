@@ -88,7 +88,10 @@ table by its name, and Infer writes its type into its signature as it does a cel
 type in a signature is checked: the same columns, in the same order, holding the same types.
 
 A size is `Size Fixed`, with a definition, `s = 4`, or `Size Unknown`, which stands alone: the
-workbook decides its value.
+workbook decides its value. A size that a formula's data decides is `Size Maximum n`, at most
+`n`, as `filter` gives, or `Size Same n`, as many as `n` but not lined up with it. Its `n` is
+made of sizes declared above it and of the rows of tables read from files, `sales_n` for
+`sales`.
 
 ```text
 segments : Size Fixed
@@ -265,6 +268,7 @@ either does, as in arithmetic.
 | `year_of x`, `month_of x` | the year or month of a date | `YEAR(x)`, `MONTH(x)` |
 | `end_of_month k x` | the last day of the month k months after x | `DATE(YEAR(x),MONTH(x)+k+1,0)` |
 | `lookup k ks vs` | the value beside each key, shaped as `k` | `XLOOKUP(k,ks,vs)` |
+| `filter keep t` | the rows of `t` where the column `keep`, lined up with them, holds | `FILTER(t,keep)` |
 | `t.c` | the column called `c` of the table `t` | `INDEX(t,0,j)` |
 | `na` | the error `#N/A` | `NA()` |
 | `csv "file.csv"` | a table read from a file, as the whole of a value's definition | its cells |
@@ -306,6 +310,19 @@ Every expression has a size in rows and columns, and a span: where it sits along
 - A signature can name an unknown size: `year : Formula Number size [1, n] …` with
   `n : Size Unknown`. The name is checked, and each declared size names exactly one `..`. An
   unknown size no signature names is called after the binding that made it, such as `year_n`.
+- `filter keep t` has a new size, at most `t`'s rows, so that it never lines up by mistake with
+  what it came from. Wherever a binding's cells have that size, a declaration names it, and a
+  signature names the declaration:
+
+  ```text
+  big_n : Size Maximum sales_n
+  big : Formula size [big_n, 2] at main G2
+  big = filter (sales.units > 100) sales
+  ```
+
+  Infer checks that the declaration says what `filter` makes. Where the bound is known when the
+  file is written, the cells are placed, checked and styled as that many: a binding placed below
+  `big` goes below the most rows it can have.
 - Operators and functions that work position by position need operands of the same size and
   span. A dimension of size 1 stretches to match the other operand, as in the spreadsheet app, so
   a column of segments times a row of years is a grid.

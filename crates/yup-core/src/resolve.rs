@@ -515,7 +515,7 @@ fn pair(program: &Program, errors: &mut Vec<Diagnostic>) -> (Vec<Paired>, Vec<Si
                 sizes.push(SizeDecl {
                     name: name.name.clone(),
                     pos: name.pos,
-                    kind: *kind,
+                    kind: kind.clone(),
                     value: None,
                 });
                 pending = Some(match kind {
@@ -524,7 +524,9 @@ fn pair(program: &Program, errors: &mut Vec<Diagnostic>) -> (Vec<Paired>, Vec<Si
                         name: name.name.clone(),
                         apart: false,
                     },
-                    SizeKind::Unknown => Pending::Unknown(name.name.clone()),
+                    SizeKind::Unknown | SizeKind::Maximum(_) | SizeKind::Same(_) => {
+                        Pending::Unknown(name.name.clone())
+                    }
                 });
             }
             ItemKind::Signature(sig) => {
@@ -1222,12 +1224,19 @@ impl Scope<'_> {
                     errors.extend(problem.map(|message| Diagnostic::error(expr.pos, message)));
                 }
                 Some(Symbol::Size(s)) => {
-                    if self.sizes[*s].kind == SizeKind::Unknown {
+                    let what = match self.sizes[*s].kind {
+                        SizeKind::Fixed => None,
+                        SizeKind::Unknown => Some("an unknown size"),
+                        SizeKind::Maximum(_) | SizeKind::Same(_) => {
+                            Some("a size that a formula's data decides")
+                        }
+                    };
+                    if let Some(what) = what {
                         errors.push(Diagnostic::error(
                             expr.pos,
                             format!(
-                                "`{name}` is an unknown size; a formula cannot use its value, but \
-                                 can use the range it is the size of"
+                                "`{name}` is {what}; a formula cannot use its value, but can use \
+                                 the range it is the size of"
                             ),
                         ));
                     }

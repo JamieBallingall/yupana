@@ -26,7 +26,7 @@ pub enum ItemKind {
     Blank,
     /// A line that holds only a comment, without its `//`.
     Comment(String),
-    /// `n : Size Unknown` or `s : Size Fixed`.
+    /// `n : Size Unknown`, `s : Size Fixed`, `k : Size Maximum n` or `m : Size Same n`.
     Size { name: Ident, kind: SizeKind },
     /// `name : Role …`: everything about a binding besides its definition.
     Signature(Box<Signature>),
@@ -45,13 +45,39 @@ pub struct Ident {
     pub pos: Pos,
 }
 
-/// Whether a size variable is known when the file is written.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Whether a size variable is known when the file is written, and what is known of it.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SizeKind {
     /// Known when the file is written: `s = 4`.
     Fixed,
     /// Decided in the workbook, such as a horizon its user can change.
     Unknown,
+    /// Decided by a formula's data, and at most another size: what `filter` and `unique`
+    /// give.
+    Maximum(SizeSyntax),
+    /// Decided by a formula's data, and as large as another size, but not lined up with it:
+    /// what a sort gives.
+    Same(SizeSyntax),
+}
+
+impl SizeKind {
+    /// The word after `Size`.
+    pub fn word(&self) -> &'static str {
+        match self {
+            SizeKind::Fixed => "Fixed",
+            SizeKind::Unknown => "Unknown",
+            SizeKind::Maximum(_) => "Maximum",
+            SizeKind::Same(_) => "Same",
+        }
+    }
+
+    /// The size a size the data decides depends on.
+    pub fn of(&self) -> Option<&SizeSyntax> {
+        match self {
+            SizeKind::Fixed | SizeKind::Unknown => None,
+            SizeKind::Maximum(of) | SizeKind::Same(of) => Some(of),
+        }
+    }
 }
 
 /// What a binding is, and so what it becomes in the workbook.

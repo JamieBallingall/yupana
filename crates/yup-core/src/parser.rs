@@ -292,12 +292,20 @@ impl Parser {
         };
         self.advance();
         if word == "Size" {
-            let kind = match self.word().as_deref() {
+            let word = self.word();
+            if !matches!(
+                word.as_deref(),
+                Some("Fixed" | "Unknown" | "Maximum" | "Same")
+            ) {
+                return Err(self.unexpected("`Fixed`, `Unknown`, `Maximum` or `Same` after `Size`"));
+            }
+            self.advance();
+            let kind = match word.as_deref() {
                 Some("Fixed") => SizeKind::Fixed,
                 Some("Unknown") => SizeKind::Unknown,
-                _ => return Err(self.unexpected("`Fixed` or `Unknown` after `Size`")),
+                Some("Maximum") => SizeKind::Maximum(self.size()?),
+                _ => SizeKind::Same(self.size()?),
             };
-            self.advance();
             return Ok(ItemKind::Size { name, kind });
         }
         let Some(role) = Role::from_word(&word) else {

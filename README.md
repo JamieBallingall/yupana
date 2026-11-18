@@ -805,6 +805,17 @@ ranked = sort_by_descending big.units big
   its binding, so `sales` has `sales_n` rows. Every size the data decides is in the file, and
   `yup show` prints them as written.
 
+Decided while building, 2026-11-17:
+
+- `sales_n` is a name only in a declaration of a size the data decides. A table read from a
+  file still has a number of rows, as in 0.2, and its signature says `size [5, 3]`.
+- A declaration depends only on sizes declared above it, so that no two depend on each other.
+- A formula cannot use the value of a size the data decides, as it cannot an unknown size's.
+- Ground keeps a size the data decides by name in the file it prints, so that the file reads
+  the same when run again, and lays its cells out at its bound.
+- `filter` is written `_xlfn._xlws.FILTER`. That prefix, and `_xlfn.HSTACK`'s, are to be
+  confirmed against [MS-XLSX] §2.2.2 before 0.3 is released.
+
 ### Lambdas inside expressions
 
 A lambda is written `\x -> e`, or `\x y -> e` with two parameters, as chosen with S3. In 0.3 it

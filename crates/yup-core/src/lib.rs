@@ -717,6 +717,65 @@ latest = lookup (maximum sales.year) sales.year sales.units
         }
     }
 
+    const FILTERED: &str = "\
+big_n : Size Maximum sales_n
+big : Formula size [big_n, 2] at main G2
+big = filter (sales.units > 10) sales
+below : Formula big down 1
+below = sum big.units
+";
+
+    #[test]
+    fn a_filter_has_a_declared_size_and_is_laid_out_at_its_bound() {
+        let inputs = sales_inputs("year,units\n2024,10\n2025,12\n");
+        let source = file(&format!("{SALES}{FILTERED}"));
+        let typed = show(&source, Step::Infer, &inputs).expect("infers").text;
+        for line in [
+            "big_n : Size Maximum sales_n",
+            "big : Formula { year : Number, units : Number } size [big_n, 2] at main G2",
+        ] {
+            assert!(typed.contains(line), "{line}\n{typed}");
+        }
+        let listing = show(&source, Step::Lower, &inputs).expect("lowers").text;
+        for line in [
+            "  G2     =_xlfn._xlws.FILTER(sales,INDEX(sales,0,2)>10)",
+            "  G4     =SUM(INDEX(big,0,2))",
+        ] {
+            assert!(listing.contains(line), "{line}\n{listing}");
+        }
+        for (from, to, message) in [
+            (
+                "big_n : Size Maximum sales_n\nbig : Formula size [big_n, 2] at main G2",
+                "big : Formula at main G2",
+                "10:7: error: the cells of `big` have the size made here, which a declaration \
+                 names: add `big_n : Size Maximum sales_n` and name it in `big`'s signature",
+            ),
+            (
+                "Size Maximum sales_n",
+                "Size Same sales_n",
+                "10:21: error: `big_n` is declared `Size Same sales_n` at 9:1, and the size made \
+                 at 11:7 is `Size Maximum sales_n`",
+            ),
+            (
+                "Size Maximum sales_n",
+                "Size Maximum other_n",
+                "9:22: error: unknown size `other_n`; a size the data decides depends on a size \
+                 declared above it, or on the rows of a table read from a file, as `sales_n` \
+                 for `sales`",
+            ),
+            (
+                "filter (sales.units > 10) sales",
+                "filter [True] sales",
+                "11:14: error: `filter` keeps the rows where one column lined up with them \
+                 holds: the table covers rows [0, 2), and this covers rows [0, 1)",
+            ),
+        ] {
+            let source = file(&format!("{SALES}{}", FILTERED.replace(from, to)));
+            let errors = show(&source, Step::Infer, &inputs).expect_err(to);
+            assert_eq!(errors[0].to_string(), message, "{to}");
+        }
+    }
+
     #[test]
     fn a_column_is_written_with_a_dot_and_no_spaces() {
         let source = "a : Formula at main B2\na = 1 . 5\n";

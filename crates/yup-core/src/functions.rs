@@ -29,6 +29,7 @@ pub enum Builtin {
     EndOfMonth,
     Exact,
     Exp,
+    Filter,
     First,
     Floor,
     FloorTo,
@@ -293,6 +294,18 @@ const TABLE: &[Entry] = &[
         app: app("EXACT", &[0, 1]),
     },
     numeric("exp", Builtin::Exp, "exp x", "EXP"),
+    // The rows of a table, or of a range of one column, where a column lined up with it holds.
+    // How many is the data's to decide, so the result has a size of its own, at most the
+    // table's rows.
+    Entry {
+        name: "filter",
+        builtin: Builtin::Filter,
+        usage: "filter keep table",
+        takes: &[LOGICAL, ANY],
+        kind: Kind::Own,
+        gives: Gives::Like(1),
+        app: app("_xlfn._xlws.FILTER", &[1, 0]),
+    },
     // The first or last k positions of a range, along its one dimension or the way written.
     // The result starts at position 0: it stands alone rather than lining up with the range.
     Entry {

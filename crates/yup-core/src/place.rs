@@ -9,14 +9,15 @@
 //! move, the binding lines up with the reference's first column or row.
 //!
 //! A cell may depend on fixed sizes but never on unknown ones, so counting from the far side of
-//! a range of unknown extent is refused.
+//! a range of unknown extent is refused. A range whose size the data decides, at most a size
+//! known when the file is written, is counted at that bound.
 
 use std::collections::BTreeMap;
 
 use crate::cells::column_name;
 use crate::check::Warning;
 use crate::diagnostic::{Diagnostic, Pos};
-use crate::infer::{Extent, Typed, VarKind};
+use crate::infer::{Extent, Typed};
 use crate::resolve::{Model, Place};
 use crate::size::SizeExpr;
 use crate::syntax::{Direction, Move, Program, Side};
@@ -134,9 +135,9 @@ pub fn place(program: &Program, model: &Model, typed: &Typed) -> Result<Placed, 
     }
 }
 
-/// Whether a size is known when the file is written.
+/// Whether a size is known when the file is written, or bounded by one that is.
 fn known(typed: &Typed, size: &SizeExpr) -> bool {
-    !size.any_var(|var| typed.vars[var].kind == VarKind::Unknown)
+    !size.any_var(|var| typed.layout(var).is_none())
 }
 
 /// Where a binding placed beside `reference` goes along one axis.
