@@ -5,8 +5,8 @@
 
 use crate::cells::{self, cell_name};
 use crate::syntax::{
-    BinOp, Expr, ExprKind, Field, Item, ItemKind, Placement, Program, Signature, SizeKind,
-    SizeSyntax, Type,
+    BinOp, CellType, Expr, ExprKind, Field, Item, ItemKind, Placement, Program, Signature,
+    SizeKind, SizeSyntax, Type,
 };
 
 /// The widest line the printer writes a record on before it gives each field a line of its own.
@@ -148,7 +148,7 @@ fn signature(sig: &Signature) -> String {
     parts.join(" ")
 }
 
-fn type_text(ty: &Type) -> String {
+pub fn type_text(ty: &Type) -> String {
     match ty {
         Type::Cell(ty) => ty.word().to_string(),
         Type::Function(types) => types
@@ -157,7 +157,16 @@ fn type_text(ty: &Type) -> String {
             .collect::<Vec<_>>()
             .join(" -> "),
         Type::Style(ty) => ty.word().to_string(),
+        Type::Table(columns) => table_type(columns.iter().map(|(name, ty)| (&*name.name, *ty))),
     }
+}
+
+/// A table's type as a signature writes it: `{ year : Number, region : Text }`.
+pub fn table_type<'a>(columns: impl Iterator<Item = (&'a str, CellType)>) -> String {
+    let columns: Vec<String> = columns
+        .map(|(name, ty)| format!("{name} : {}", ty.word()))
+        .collect();
+    format!("{{ {} }}", columns.join(", "))
 }
 
 /// Prints a size: its variables first, then its constant, as in `n - 1`.

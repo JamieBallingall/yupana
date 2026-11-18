@@ -594,14 +594,12 @@ latest = lookup (maximum sales.year) sales.year sales.units
                 "8:16: error: the table `sales` has no column `month`; its columns are year, units",
             ),
             (
-                "latest.year",
-                "8:17: error: `latest` is not a table, a value defined by `csv`, so it has no \
-                 column `year`",
+                "na.year",
+                "8:13: error: `na` is not a table, so it has no column `year`",
             ),
             (
                 "(sales + 1).year",
-                "8:22: error: a column is taken from a table by its name, a value defined by \
-                 `csv`, as in `history.units`",
+                "8:22: error: this is not a table, so it has no column `year`",
             ),
             (
                 "column \"year\" sales",
@@ -613,14 +611,66 @@ latest = lookup (maximum sales.year) sales.year sales.units
                 "lookup (maximum sales.year) sales.year sales.units",
                 definition,
             );
-            // `latest.year` also makes `latest` depend on itself, which is reported too.
-            let errors: Vec<String> = show(&file(&source), Step::Resolve, &inputs)
-                .expect_err(definition)
-                .iter()
-                .map(ToString::to_string)
-                .collect();
-            assert!(errors.iter().any(|error| error == message), "{errors:?}");
+            let errors = show(&file(&source), Step::Infer, &inputs).expect_err(definition);
+            assert_eq!(errors[0].to_string(), message, "{definition}");
         }
+    }
+
+    #[test]
+    fn a_table_has_a_type_of_its_columns() {
+        let inputs = sales_inputs("year,units,note\n2024,10,\n2025,12,\n");
+        let typed = SALES.replace(
+            "sales : Value at main D2",
+            "sales : Value { year : Number, units : Number, note : Text } at main D2",
+        );
+        let copy = format!("{typed}again : Formula at main D10\nagain = sales\n");
+        let shown = show(&file(&copy), Step::Infer, &inputs)
+            .expect("infers")
+            .text;
+        for line in [
+            "sales : Value { year : Number, units : Number, note : Text } size [2, 3] at main D2",
+            "again : Formula { year : Number, units : Number, note : Text } size [2, 3] at main D10",
+        ] {
+            assert!(shown.contains(line), "{line}\n{shown}");
+        }
+        let source = file(SALES);
+        let errors = show(&source, Step::Infer, &inputs).expect_err("a blank column");
+        assert_eq!(
+            errors[0].to_string(),
+            "5:1: error: the column `note` of `sales` holds only blanks, so its signature gives \
+             its type, as in `{ note : Number }`"
+        );
+        let inputs = sales_inputs("year,units\n2024,10\n");
+        for (signature, message) in [
+            (
+                "sales : Value { year : Number, units : Text } at main D2",
+                "5:15: error: `sales` has the columns `{ year : Number, units : Number }`, and its \
+                 signature says `{ year : Number, units : Text }`",
+            ),
+            (
+                "sales : Value { units : Number, year : Number } at main D2",
+                "5:15: error: `sales` has the columns `{ year : Number, units : Number }`, and its \
+                 signature says `{ units : Number, year : Number }`",
+            ),
+            (
+                "sales : Value Number at main D2",
+                "5:15: error: `sales` is a table, so its type is written with its columns: \
+                 `{ year : Number, units : Number }`",
+            ),
+        ] {
+            let source = SALES.replace("sales : Value at main D2", signature);
+            let errors = show(&file(&source), Step::Infer, &inputs).expect_err(signature);
+            assert_eq!(errors[0].to_string(), message, "{signature}");
+        }
+        let source = SALES.replace(
+            "latest : Formula sales down 3",
+            "latest : Formula { year : Number } sales down 3",
+        );
+        let errors = show(&file(&source), Step::Infer, &inputs).expect_err("not a table");
+        assert_eq!(
+            errors[0].to_string(),
+            "7:18: error: `latest` is not a table, so its type is not a table's"
+        );
     }
 
     #[test]

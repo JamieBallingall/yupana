@@ -145,11 +145,22 @@ fn sizes(program: &Program, model: &Model, typed: &Typed, shapes: &[Shape], edit
         }
         let mut sig = model.signature(program, index).clone();
         let pos = sig.name.pos;
-        if sig.ty.is_none()
-            && !matches!(binding.role, Role::Label | Role::Empty)
-            && let Some(ty) = typed.types[index]
-        {
-            sig.ty = Some((Type::Cell(ty), pos));
+        if sig.ty.is_none() && !matches!(binding.role, Role::Label | Role::Empty) {
+            sig.ty = match &typed.tables[index] {
+                // A table whose columns' types are all known writes them all.
+                Some(columns) => columns
+                    .iter()
+                    .map(|column| {
+                        let name = Ident {
+                            name: column.name.clone(),
+                            pos,
+                        };
+                        column.ty.map(|ty| (name, ty))
+                    })
+                    .collect::<Option<Vec<_>>>()
+                    .map(|columns| (Type::Table(columns), pos)),
+                None => typed.types[index].map(|ty| (Type::Cell(ty), pos)),
+            };
         }
         let shape = &shapes[index];
         sig.shape = Some(ShapeSyntax {

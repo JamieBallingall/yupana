@@ -325,13 +325,11 @@ pub fn resolve(program: &Program, inputs: &Inputs) -> Result<Model, Vec<Diagnost
 
     // A value defined as `csv "file.csv"` is a table, read from the file the caller gave.
     let mut tables = BTreeMap::new();
-    let mut table_bindings = BTreeSet::new();
     for (index, binding) in bindings.iter().enumerate() {
         match binding.role {
             Role::Value => {
                 let expr = definition_of(program, binding);
                 if let Some((file, pos)) = csv_file(expr) {
-                    table_bindings.insert(index);
                     match inputs.get(file) {
                         None => errors.push(Diagnostic::error(
                             pos,
@@ -362,8 +360,6 @@ pub fn resolve(program: &Program, inputs: &Inputs) -> Result<Model, Vec<Diagnost
                 sizes: &sizes,
                 bindings: &bindings,
                 params: &binding.params,
-                tables: &tables,
-                table_bindings: &table_bindings,
             };
             scope.resolve_expr(
                 definition_of(program, binding),
@@ -1174,10 +1170,6 @@ struct Scope<'a> {
     sizes: &'a [SizeDecl],
     bindings: &'a [Binding],
     params: &'a [String],
-    /// The tables that were read.
-    tables: &'a BTreeMap<usize, Table>,
-    /// Every value defined by `csv`, whether or not its file could be read.
-    table_bindings: &'a BTreeSet<usize>,
 }
 
 /// How a lambda is called, for messages: `name a b`.
@@ -1312,7 +1304,6 @@ impl Scope<'_> {
                 expr.pos,
                 format!("`{word}` is a setting of a style, not a value a formula can use"),
             )),
-            ExprKind::Column { table, name } => errors.extend(self.column_error(table, name)),
             ExprKind::Record(_) | ExprKind::Update { .. } => errors.push(Diagnostic::error(
                 expr.pos,
                 "a record belongs to a style, a sheet or the workbook, not to a formula",
@@ -1322,49 +1313,6 @@ impl Scope<'_> {
         for child in expr.children() {
             self.resolve_expr(child, delayed, uses, errors);
         }
-    }
-
-    /// Checks `table.name`: a table read from a file, by its name, and a column it has.
-    fn column_error(&self, table: &Expr, name: &Ident) -> Option<Diagnostic> {
-        let binding = match &table.kind {
-            ExprKind::Name(table_name) if !self.params.contains(table_name) => {
-                match self.symbols.get(table_name) {
-                    Some(Symbol::Binding(b)) if self.table_bindings.contains(b) => *b,
-                    // An unknown name is reported as one.
-                    None => return None,
-                    _ => {
-                        return Some(Diagnostic::error(
-                            name.pos,
-                            format!(
-                                "`{table_name}` is not a table, a value defined by `csv`, so it \
-                                 has no column `{}`",
-                                name.name
-                            ),
-                        ));
-                    }
-                }
-            }
-            _ => {
-                return Some(Diagnostic::error(
-                    name.pos,
-                    "a column is taken from a table by its name, a value defined by `csv`, as \
-                     in `history.units`",
-                ));
-            }
-        };
-        // A table whose file could not be read has been reported already.
-        let table = self.tables.get(&binding)?;
-        (!table.header.contains(&name.name)).then(|| {
-            Diagnostic::error(
-                name.pos,
-                format!(
-                    "the table `{}` has no column `{}`; its columns are {}",
-                    self.bindings[binding].name,
-                    name.name,
-                    table.header.join(", ")
-                ),
-            )
-        })
     }
 
     fn resolve_call(

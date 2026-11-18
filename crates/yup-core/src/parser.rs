@@ -429,6 +429,33 @@ impl Parser {
         let pos = self.pos();
         let word = self.word();
         match role {
+            Role::Formula | Role::Value | Role::Local if *self.peek() == Token::LBrace => {
+                self.advance();
+                let mut columns = Vec::new();
+                loop {
+                    // A column's name is a field's, so a keyword such as `size` is one too.
+                    let Token::Name(name) = self.peek().clone() else {
+                        return Err(self.unexpected("a column's name"));
+                    };
+                    let name = Ident {
+                        name,
+                        pos: self.advance().pos,
+                    };
+                    self.expect(&Token::Colon, "`:`")?;
+                    columns.push((name, self.cell_type()?));
+                    match self.peek() {
+                        Token::Comma => {
+                            self.advance();
+                        }
+                        Token::RBrace => {
+                            self.advance();
+                            break;
+                        }
+                        _ => return Err(self.unexpected("`,` or `}`")),
+                    }
+                }
+                Ok(Some((Type::Table(columns), pos)))
+            }
             Role::Formula | Role::Value | Role::Local => match word {
                 Some(word) => match CellType::from_word(&word) {
                     Some(ty) => {

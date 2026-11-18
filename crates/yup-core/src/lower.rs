@@ -819,18 +819,8 @@ impl Lowerer<'_> {
                     call(&func.name, &args)
                 }
             },
-            ExprKind::Column { table, name } => {
-                let ExprKind::Name(table_name) = &table.kind else {
-                    unreachable!("Resolve checks that a column's table is a name");
-                };
-                let Some(&Symbol::Binding(binding)) = self.model.symbols.get(table_name) else {
-                    unreachable!("Resolve checks the table");
-                };
-                let index = self.model.tables[&binding]
-                    .header
-                    .iter()
-                    .position(|column| *column == name.name)
-                    .expect("Resolve checks the column's name");
+            ExprKind::Column { table, .. } => {
+                let index = self.typed.columns[&expr.pos];
                 // INDEX with row 0 gives the whole column.
                 call(
                     "INDEX",

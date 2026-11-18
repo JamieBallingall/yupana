@@ -82,6 +82,11 @@ written for `Label`, which always holds text, or for `Sheet` and `Workbook`. A `
 type that names its parameters and its result, `Number -> Number -> Number`, and a `Style` names
 the kind of record it is: `Cell`, `Font`, `Border`, `Edge`, `Alignment` or `Color`.
 
+A table's type names its columns, in order, and what each holds: `{ year : Number, region :
+Text }`. A binding is a table if it is read from a file or is another table by its name, and
+Infer writes its type into its signature as it does a cell's. A table's type in a signature is
+checked: the same columns, in the same order, holding the same types.
+
 A size is `Size Fixed`, with a definition, `s = 4`, or `Size Unknown`, which stands alone: the
 workbook decides its value.
 
@@ -123,9 +128,11 @@ start with a digit starts with `col_`. So `Unit Price` is `unit_price`, and `202
 are two headers that become the same name: rename them in the file.
 
 A column holds one type: numbers, text or logicals, with blank fields allowed in any of them. A
-column that holds two is an error at its first field of the second.
+column that holds two is an error at its first field of the second. A column of blanks only takes
+the type that the table's signature gives it, and is an error without one.
 
-`history.units` is one column of a table, written with no space around the `.`.
+`history.units` is one column of a table, written with no space around the `.`. Its name may be
+a keyword, such as `size`, since it is a column's name rather than a binding's.
 
 ## Lambdas
 

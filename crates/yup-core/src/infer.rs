@@ -17,12 +17,15 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::csv::Field;
+use crate::csv::Table;
 use crate::diagnostic::{Diagnostic, Pos};
 use crate::functions::{Builtin, Gives, Kind};
+use crate::printer::type_text;
 use crate::resolve::{Model, Recurrence, Symbol};
 use crate::size::SizeExpr;
 use crate::syntax::{
     Axis, BinOp, CellType, Expr, ExprKind, Ident, Program, Role, Signature, SizeKind, SizeSyntax,
+    Type,
 };
 
 /// Where a range sits along one dimension: `size` positions, starting at position `start`.
@@ -74,6 +77,13 @@ pub struct Var {
     pub introduced_by: Option<usize>,
 }
 
+/// A column of a table: its name, and what its cells hold, where that is known.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TableColumn {
+    pub name: String,
+    pub ty: Option<CellType>,
+}
+
 /// The shape and the cell type of every binding, in terms of the size variables.
 #[derive(Clone, Debug)]
 pub struct Typed {
@@ -81,6 +91,10 @@ pub struct Typed {
     pub shapes: Vec<Shape>,
     /// What each binding's cells hold, where that is one type.
     pub types: Vec<Option<CellType>>,
+    /// The columns of each binding that is a table.
+    pub tables: Vec<Option<Vec<TableColumn>>>,
+    /// Which column each `table.name` takes, counted from 0, by its position.
+    pub columns: BTreeMap<Pos, usize>,
     /// The parts of a recurrence that lie outside its cycle and run along it, by position:
     /// inside the scan that works the recurrence out, they are read one position at a time.
     pub along: BTreeSet<Pos>,
@@ -143,6 +157,8 @@ struct Infer<'a> {
     carried: BTreeMap<usize, Axis>,
     axes: BTreeMap<Pos, Axis>,
     types: Vec<Option<CellType>>,
+    tables: Vec<Option<Vec<TableColumn>>>,
+    columns: BTreeMap<Pos, usize>,
 }
 
 /// What a cell holds, as far as Infer can tell: one type, any of them, or none at all, which an
@@ -160,6 +176,18 @@ fn join(a: Ty, b: Ty) -> Ty {
         (a, b) if a == b => a,
         _ => Ty::Any,
     }
+}
+
+/// A table's columns as its type writes them, with `Any` for a column whose type is unknown.
+fn show_columns(columns: &[TableColumn]) -> String {
+    let columns: Vec<String> = columns
+        .iter()
+        .map(|column| {
+            let ty = column.ty.map_or("Any", CellType::word);
+            format!("{} : {ty}", column.name)
+        })
+        .collect();
+    format!("{{ {} }}", columns.join(", "))
 }
 
 /// Infers the shape of every binding in `model`.
@@ -195,6 +223,8 @@ pub fn infer(program: &Program, model: &Model) -> Result<Typed, Vec<Diagnostic>>
         carried: BTreeMap::new(),
         axes: BTreeMap::new(),
         types: vec![None; model.bindings.len()],
+        tables: vec![None; model.bindings.len()],
+        columns: BTreeMap::new(),
     };
     for &binding in &model.order {
         match model.recurrence_of(binding) {
@@ -1099,7 +1129,6 @@ impl Infer<'_> {
                 }
                 return;
             }
-            Role::Value if self.model.tables.contains_key(&binding) => Ty::Any,
             _ => match self.ty(expr, &BTreeMap::new()) {
                 Ok(ty) => ty,
                 Err(error) => {
@@ -1109,6 +1138,63 @@ impl Infer<'_> {
             },
         };
         let sig = self.model.signature(self.program, binding);
+        let table = match self.model.tables.get(&binding) {
+            Some(read) => self.read_table(binding, read),
+            None => self.table(expr, &BTreeMap::new()),
+        };
+        match (table, &sig.ty) {
+            (Some(columns), Some((Type::Table(declared), pos))) => {
+                let agree = columns.len() == declared.len()
+                    && columns.iter().zip(declared).all(|(column, (name, ty))| {
+                        column.name == name.name && column.ty.is_none_or(|found| found == *ty)
+                    });
+                if !agree {
+                    self.errors.push(Diagnostic::error(
+                        *pos,
+                        format!(
+                            "`{}` has the columns `{}`, and its signature says `{}`",
+                            b.name,
+                            show_columns(&columns),
+                            type_text(&Type::Table(declared.clone()))
+                        ),
+                    ));
+                    return;
+                }
+                self.tables[binding] = Some(
+                    declared
+                        .iter()
+                        .map(|(name, ty)| TableColumn {
+                            name: name.name.clone(),
+                            ty: Some(*ty),
+                        })
+                        .collect(),
+                );
+                return;
+            }
+            (Some(columns), Some((_, pos))) => {
+                self.errors.push(Diagnostic::error(
+                    *pos,
+                    format!(
+                        "`{}` is a table, so its type is written with its columns: `{}`",
+                        b.name,
+                        show_columns(&columns)
+                    ),
+                ));
+                return;
+            }
+            (Some(columns), None) => {
+                self.tables[binding] = Some(columns);
+                return;
+            }
+            (None, Some((Type::Table(_), pos))) => {
+                self.errors.push(Diagnostic::error(
+                    *pos,
+                    format!("`{}` is not a table, so its type is not a table's", b.name),
+                ));
+                return;
+            }
+            (None, _) => {}
+        }
         if let (Some(declared), Ty::Known(found), Some((_, pos))) = (b.declared, ty, &sig.ty)
             && declared != found
         {
@@ -1130,7 +1216,7 @@ impl Infer<'_> {
 
     /// What an expression's cells hold. A lambda's parameters have the types its signature
     /// gives them.
-    fn ty(&self, expr: &Expr, params: &BTreeMap<String, CellType>) -> Result<Ty, Diagnostic> {
+    fn ty(&mut self, expr: &Expr, params: &BTreeMap<String, CellType>) -> Result<Ty, Diagnostic> {
         let number = |ty: Ty, what: &str| -> Result<(), Diagnostic> {
             match ty {
                 Ty::Known(CellType::Text) => Err(Diagnostic::error(
@@ -1148,7 +1234,38 @@ impl Infer<'_> {
             | ExprKind::Constructor(_)
             | ExprKind::Record(_)
             | ExprKind::Update { .. } => Ty::Any,
-            ExprKind::Column { table, name } => self.column_type(table, name),
+            ExprKind::Column { table, name } => {
+                let Some(columns) = self.table(table, params) else {
+                    let message = match &table.kind {
+                        ExprKind::Name(table) => {
+                            format!(
+                                "`{table}` is not a table, so it has no column `{}`",
+                                name.name
+                            )
+                        }
+                        _ => format!("this is not a table, so it has no column `{}`", name.name),
+                    };
+                    return Err(Diagnostic::error(name.pos, message));
+                };
+                let Some(index) = columns.iter().position(|column| column.name == name.name) else {
+                    let names: Vec<&str> =
+                        columns.iter().map(|column| column.name.as_str()).collect();
+                    return Err(Diagnostic::error(
+                        name.pos,
+                        format!(
+                            "{} has no column `{}`; its columns are {}",
+                            match &table.kind {
+                                ExprKind::Name(table) => format!("the table `{table}`"),
+                                _ => "the table".to_string(),
+                            },
+                            name.name,
+                            names.join(", ")
+                        ),
+                    ));
+                };
+                self.columns.insert(expr.pos, index);
+                columns[index].ty.map_or(Ty::Any, Ty::Known)
+            }
             ExprKind::Name(name) => match params.get(name) {
                 Some(ty) => Ty::Known(*ty),
                 None => match self.model.symbols.get(name) {
@@ -1258,30 +1375,58 @@ impl Infer<'_> {
         })
     }
 
-    /// What the cells of a table's column hold, where they all hold the same.
-    fn column_type(&self, table: &Expr, name: &Ident) -> Ty {
-        let ExprKind::Name(table) = &table.kind else {
-            return Ty::Any;
+    /// The columns of a table read from a file. A column of blanks only takes the type that
+    /// the signature gives it.
+    fn read_table(&mut self, binding: usize, read: &Table) -> Option<Vec<TableColumn>> {
+        let sig = self.model.signature(self.program, binding);
+        let declared = match &sig.ty {
+            Some((Type::Table(declared), _)) => declared.as_slice(),
+            _ => &[],
         };
-        let name = &name.name;
-        let Some(Symbol::Binding(binding)) = self.model.symbols.get(table) else {
-            return Ty::Any;
-        };
-        let Some(table) = self.model.tables.get(binding) else {
-            return Ty::Any;
-        };
-        let Some(index) = table.header.iter().position(|column| column == name) else {
-            return Ty::Any;
-        };
-        table.rows.iter().fold(Ty::Never, |ty, row| {
-            let field = match &row[index] {
-                Field::Empty => Ty::Never,
-                Field::Number(_) => Ty::Known(CellType::Number),
-                Field::Bool(_) => Ty::Known(CellType::Logical),
-                Field::Text(_) => Ty::Known(CellType::Text),
-            };
-            join(ty, field)
-        })
+        let mut columns = Vec::with_capacity(read.header.len());
+        for (index, name) in read.header.iter().enumerate() {
+            let found = read.rows.iter().find_map(|row| match &row[index] {
+                Field::Empty => None,
+                Field::Number(_) => Some(CellType::Number),
+                Field::Bool(_) => Some(CellType::Logical),
+                Field::Text(_) => Some(CellType::Text),
+            });
+            let ty = found.or_else(|| {
+                declared
+                    .iter()
+                    .find(|(declared, _)| declared.name == *name)
+                    .map(|&(_, ty)| ty)
+            });
+            if ty.is_none() {
+                self.errors.push(Diagnostic::error(
+                    sig.name.pos,
+                    format!(
+                        "the column `{name}` of `{}` holds only blanks, so its signature gives \
+                         its type, as in `{{ {name} : Number }}`",
+                        sig.name.name
+                    ),
+                ));
+                return None;
+            }
+            columns.push(TableColumn {
+                name: name.clone(),
+                ty,
+            });
+        }
+        Some(columns)
+    }
+
+    /// The columns of an expression that is a table, if it is one.
+    fn table(&self, expr: &Expr, params: &BTreeMap<String, CellType>) -> Option<Vec<TableColumn>> {
+        match &expr.kind {
+            ExprKind::Name(name) if !params.contains_key(name) => {
+                match self.model.symbols.get(name) {
+                    Some(Symbol::Binding(binding)) => self.tables[*binding].clone(),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
     }
 
     fn finish(mut self) -> Result<Typed, Vec<Diagnostic>> {
@@ -1367,6 +1512,8 @@ impl Infer<'_> {
             vars,
             shapes,
             types: self.types,
+            tables: self.tables,
+            columns: self.columns,
             along: self.along,
             drivers: self.drivers,
             carried: self.carried,

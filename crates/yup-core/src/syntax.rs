@@ -195,6 +195,8 @@ pub enum Type {
     Function(Vec<CellType>),
     /// The kind of record a style is: `Cell`.
     Style(StyleType),
+    /// A table's columns, in order, and what each holds: `{ year : Number, region : Text }`.
+    Table(Vec<(Ident, CellType)>),
 }
 
 /// A size as written: a whole number plus a sum of size variables, each with a positive
