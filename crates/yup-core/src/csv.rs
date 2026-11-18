@@ -47,21 +47,24 @@ pub fn parse(text: &str) -> Result<Table, Diagnostic> {
     };
     let mut names: Vec<String> = Vec::new();
     for field in &header {
-        if field.text.is_empty() {
-            return Err(Diagnostic::error(
-                field.pos,
-                "a column name cannot be empty",
-            ));
+        let name = column_name(&field.text).map_err(|problem| {
+            Diagnostic::error(field.pos, format!("the header `{}` {problem}", field.text))
+        })?;
+        if let Some(earlier) = names.iter().position(|other| *other == name) {
+            let message = if header[earlier].text == field.text {
+                format!("the header `{}` is given twice", field.text)
+            } else {
+                format!(
+                    "the headers `{}` and `{}` both become the name `{name}`",
+                    header[earlier].text, field.text
+                )
+            };
+            return Err(Diagnostic::error(field.pos, message));
         }
-        if names.contains(&field.text) {
-            return Err(Diagnostic::error(
-                field.pos,
-                format!("the column name `{}` is given twice", field.text),
-            ));
-        }
-        names.push(field.text.clone());
+        names.push(name);
     }
     let mut rows = Vec::new();
+    let mut kinds: Vec<Option<&str>> = vec![None; names.len()];
     for record in records {
         if record.len() != names.len() {
             let fields = |n: usize| format!("{n} field{}", if n == 1 { "" } else { "s" });
@@ -74,12 +77,68 @@ pub fn parse(text: &str) -> Result<Table, Diagnostic> {
                 ),
             ));
         }
-        rows.push(record.into_iter().map(typed).collect());
+        let mut row = Vec::with_capacity(record.len());
+        for (index, raw) in record.into_iter().enumerate() {
+            let pos = raw.pos;
+            let field = typed(raw);
+            // A column holds one type, so that a formula over it can be checked; blanks go in
+            // any column.
+            let here = kind(&field);
+            if let (Some(earlier), Some(here)) = (kinds[index], here)
+                && earlier != here
+            {
+                return Err(Diagnostic::error(
+                    pos,
+                    format!(
+                        "the column `{}` holds {earlier} above, and {here} here; a column holds \
+                         one type",
+                        names[index]
+                    ),
+                ));
+            }
+            kinds[index] = kinds[index].or(here);
+            row.push(field);
+        }
+        rows.push(row);
     }
     Ok(Table {
         header: names,
         rows,
     })
+}
+
+/// What a field holds, in words, or nothing for a blank.
+fn kind(field: &Field) -> Option<&'static str> {
+    match field {
+        Field::Empty => None,
+        Field::Number(_) => Some("numbers"),
+        Field::Bool(_) => Some("logicals"),
+        Field::Text(_) => Some("text"),
+    }
+}
+
+/// The `.yup` name a header becomes: letters in lower case, each run of anything other than a
+/// letter or a digit as one `_`, none at either end, and `col_` before a leading digit. A
+/// transliteration of letters outside ASCII would be more than the rule should hold, so such a
+/// header is refused, for its file's writer to rename.
+fn column_name(header: &str) -> Result<String, &'static str> {
+    if header.chars().any(|c| c.is_alphabetic() && !c.is_ascii()) {
+        return Err("holds a letter outside ASCII; rename it in the file");
+    }
+    let mut name = String::new();
+    for c in header.chars() {
+        if c.is_ascii_alphanumeric() {
+            name.push(c.to_ascii_lowercase());
+        } else if !name.is_empty() && !name.ends_with('_') {
+            name.push('_');
+        }
+    }
+    let name = name.trim_end_matches('_');
+    match name.chars().next() {
+        None => Err("has no letter or digit to make a name of; rename it in the file"),
+        Some(first) if first.is_ascii_digit() => Ok(format!("col_{name}")),
+        Some(_) => Ok(name.to_string()),
+    }
 }
 
 fn typed(raw: Raw) -> Field {
@@ -324,9 +383,25 @@ mod tests {
             error("a,b\n1\n"),
             "2:1: error: this row has 1 field, and the header has 2 fields"
         );
+        assert_eq!(error("a,a\n"), "1:3: error: the header `a` is given twice");
         assert_eq!(
-            error("a,a\n"),
-            "1:3: error: the column name `a` is given twice"
+            error("Unit Price,unit-price\n"),
+            "1:12: error: the headers `Unit Price` and `unit-price` both become the name \
+             `unit_price`"
+        );
+        assert_eq!(
+            error("a,Café\n"),
+            "1:3: error: the header `Café` holds a letter outside ASCII; rename it in the file"
+        );
+        assert_eq!(
+            error("a,%\n"),
+            "1:3: error: the header `%` has no letter or digit to make a name of; rename it in \
+             the file"
+        );
+        assert_eq!(
+            error("a,b\n1,x\n,w\n2,v\n\"y\",u\n"),
+            "5:1: error: the column `a` holds numbers above, and text here; a column holds one \
+             type"
         );
         assert_eq!(
             error("a\n\"open\n"),
@@ -339,6 +414,19 @@ mod tests {
         assert_eq!(
             error(""),
             "1:1: error: the file is empty; it needs a header row of column names"
+        );
+    }
+
+    #[test]
+    fn headers_become_names() {
+        let table = parse("Year,Unit Price,% of total,2025,_x_\n").expect("parses");
+        assert_eq!(
+            table.header,
+            ["year", "unit_price", "of_total", "col_2025", "x"]
+        );
+        assert_eq!(
+            column_name("--"),
+            Err("has no letter or digit to make a name of; rename it in the file")
         );
     }
 

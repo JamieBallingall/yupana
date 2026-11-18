@@ -116,6 +116,15 @@ grammar is a number, `TRUE` and `FALSE` in any case are logicals, and anything e
 quoted field is always text. The table takes as many rows as the file has records, counted when
 the workbook is written, and only its values are written: labels name its columns.
 
+Each header becomes the name of its column: letters go to lower case, each run of anything other
+than a letter or a digit becomes one `_`, an `_` at either end is dropped, and a name that would
+start with a digit starts with `col_`. So `Unit Price` is `unit_price`, and `2025` is
+`col_2025`. A header with a letter outside ASCII, or with no letter or digit, is an error, as
+are two headers that become the same name: rename them in the file.
+
+A column holds one type: numbers, text or logicals, with blank fields allowed in any of them. A
+column that holds two is an error at its first field of the second.
+
 `column "units" history` is one column of a table.
 
 ## Lambdas
