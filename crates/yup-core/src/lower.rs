@@ -986,6 +986,22 @@ impl Lowerer<'_> {
                     call("_xlfn.LET", &[x, a, y, b, choice])
                 }
             }
+            // The row numbers come last among the keys, so that ties keep their order.
+            Builtin::SortBy | Builtin::SortByDescending => {
+                let table = arg(1)?;
+                let order = if builtin == Builtin::SortBy { "1" } else { "-1" };
+                let rows = call("_xlfn.SEQUENCE", &[call("ROWS", std::slice::from_ref(&table))]);
+                call(
+                    "_xlfn.SORTBY",
+                    &[
+                        table,
+                        arg(0)?,
+                        Formula::atom(order),
+                        rows,
+                        Formula::atom("1"),
+                    ],
+                )
+            }
             // A column of whole numbers is written as one, rather than as a row transposed.
             Builtin::Transpose => match &args[0].kind {
                 ExprKind::Range { first, last } => self.range(first, last, Axis::Down, scope)?,

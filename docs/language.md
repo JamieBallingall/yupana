@@ -269,6 +269,10 @@ either does, as in arithmetic.
 | `end_of_month k x` | the last day of the month k months after x | `DATE(YEAR(x),MONTH(x)+k+1,0)` |
 | `lookup k ks vs` | the value beside each key, shaped as `k` | `XLOOKUP(k,ks,vs)` |
 | `filter keep t` | the rows of `t` where the column `keep`, lined up with them, holds | `FILTER(t,keep)` |
+| `sort_by k t` | the rows of `t` by the column `k`, lined up with them, going up; ties keep their order | `SORTBY(t,k,1,SEQUENCE(ROWS(t)),1)` |
+| `sort_by_descending k t` | the same, going down | `SORTBY(t,k,-1,SEQUENCE(ROWS(t)),1)` |
+| `unique t` | the rows of `t` without repeats, each where it first appears, ignoring case | `UNIQUE(t)` |
+| `stack a b` | the rows of `a`, then those of `b`, which has the same columns | `VSTACK(a,b)` |
 | `t.c` | the column called `c` of the table `t` | `INDEX(t,0,j)` |
 | `na` | the error `#N/A` | `NA()` |
 | `csv "file.csv"` | a table read from a file, as the whole of a value's definition | its cells |
@@ -323,6 +327,13 @@ Every expression has a size in rows and columns, and a span: where it sits along
   Infer checks that the declaration says what `filter` makes. Where the bound is known when the
   file is written, the cells are placed, checked and styled as that many: a binding placed below
   `big` goes below the most rows it can have.
+- `unique t` makes a size at most `t`'s rows, as `filter` does. `sort_by k t` and
+  `sort_by_descending k t` make `Size Same` `t`'s rows, and `stack a b` makes `Size Same` the
+  rows of both, such as `Size Same sales_n + more_n`. A sort's result has as many rows as `t`,
+  but they are in another order, so it lines up with nothing else; sort by several keys by
+  sorting more than once, the last key first, taking each key from the result before it.
+- `stack a b` takes two ranges with as many columns, and, where they are tables, with the same
+  columns by name and type, in the same order.
 - Operators and functions that work position by position need operands of the same size and
   span. A dimension of size 1 stretches to match the other operand, as in the spreadsheet app, so
   a column of segments times a row of years is a grid.

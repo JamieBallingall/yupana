@@ -54,7 +54,10 @@ pub enum Builtin {
     RoundAway,
     RoundTo,
     RoundTowardZero,
+    SortBy,
+    SortByDescending,
     Sqrt,
+    Stack,
     Sum,
     SumColumns,
     SumIf,
@@ -62,6 +65,7 @@ pub enum Builtin {
     Tail,
     Transpose,
     Trim,
+    Unique,
     Upper,
     Xirr,
     Xnpv,
@@ -294,6 +298,48 @@ const TABLE: &[Entry] = &[
         app: app("EXACT", &[0, 1]),
     },
     numeric("exp", Builtin::Exp, "exp x", "EXP"),
+    // The rows of a table, or of a range of one column, by a key lined up with them, going up
+    // or down. Ties keep their order: Lower adds the row numbers as the last key, since the
+    // app's documentation does not say that SORTBY keeps them.
+    Entry {
+        name: "sort_by",
+        builtin: Builtin::SortBy,
+        usage: "sort_by key table",
+        takes: &[ANY, ANY],
+        kind: Kind::Own,
+        gives: Gives::Like(1),
+        app: None,
+    },
+    Entry {
+        name: "sort_by_descending",
+        builtin: Builtin::SortByDescending,
+        usage: "sort_by_descending key table",
+        takes: &[ANY, ANY],
+        kind: Kind::Own,
+        gives: Gives::Like(1),
+        app: None,
+    },
+    // The rows of a table without repeats, each where it first appears. Like `==`, UNIQUE
+    // ignores case.
+    Entry {
+        name: "unique",
+        builtin: Builtin::Unique,
+        usage: "unique table",
+        takes: &[ANY],
+        kind: Kind::Own,
+        gives: Gives::Like(0),
+        app: app("_xlfn.UNIQUE", &[0]),
+    },
+    // The rows of one table, then those of another with the same columns.
+    Entry {
+        name: "stack",
+        builtin: Builtin::Stack,
+        usage: "stack first second",
+        takes: &[ANY, ANY],
+        kind: Kind::Own,
+        gives: Gives::Join,
+        app: app("_xlfn.VSTACK", &[0, 1]),
+    },
     // The rows of a table, or of a range of one column, where a column lined up with it holds.
     // How many is the data's to decide, so the result has a size of its own, at most the
     // table's rows.

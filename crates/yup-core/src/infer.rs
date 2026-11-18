@@ -200,6 +200,8 @@ struct Infer<'a> {
     types: Vec<Option<CellType>>,
     tables: Vec<Option<Vec<TableColumn>>>,
     columns: BTreeMap<Pos, usize>,
+    /// The bindings whose types could not be worked out, already reported.
+    failed: BTreeSet<usize>,
 }
 
 /// What a cell holds, as far as Infer can tell: one type, any of them, or none at all, which an
@@ -267,6 +269,7 @@ pub fn infer(program: &Program, model: &Model) -> Result<Typed, Vec<Diagnostic>>
         types: vec![None; model.bindings.len()],
         tables: vec![None; model.bindings.len()],
         columns: BTreeMap::new(),
+        failed: BTreeSet::new(),
     };
     for (var, size) in model.sizes.iter().enumerate() {
         let bound = match &size.kind {
@@ -397,22 +400,49 @@ impl Infer<'_> {
     }
 
     /// A new size that the data decides, which a declaration must name.
-    fn fresh_bounded(&mut self, pos: Pos, bound: Bound, from: &Expr, of: SizeExpr) -> SizeExpr {
-        // A table read from a file has as many rows as it has records, a number; a declaration
-        // names them after the table, so a message does too.
-        let text = match &from.kind {
+    fn fresh_bounded(&mut self, pos: Pos, bound: Bound, of: SizeExpr, text: String) -> SizeExpr {
+        let size = self.fresh(pos);
+        let var = self.vars.len() - 1;
+        self.vars[var].bound = Some(Bounded { bound, of, text });
+        size
+    }
+
+    /// How a declaration names the rows of `from`. A table read from a file has as many rows as
+    /// it has records, a number; a declaration names them after the table, so a message does
+    /// too.
+    fn rows_text(&self, from: &Expr, rows: &SizeExpr) -> String {
+        match &from.kind {
             ExprKind::Name(name)
                 if matches!(self.model.symbols.get(name),
                     Some(Symbol::Binding(binding)) if self.model.tables.contains_key(binding)) =>
             {
                 format!("{name}_n")
             }
-            _ => self.show(&of),
+            _ => self.show(rows),
+        }
+    }
+
+    /// Checks that `key` is one column lined up with the rows of `table`, as `filter` and the
+    /// sorts take.
+    fn lined_up_column(&self, key: &Expr, keys: &Shape, table: &Shape, what: &str) -> Inferred {
+        let lined_up = self.is_one(&keys.columns.size)
+            && self.same(&keys.rows.size, &table.rows.size)
+            && keys.rows.start == table.rows.start;
+        if lined_up {
+            return Ok(table.clone());
+        }
+        let this = if self.is_one(&keys.columns.size) {
+            format!("this covers rows {}", self.positions(&keys.rows))
+        } else {
+            format!("this has {} columns", self.show(&keys.columns.size))
         };
-        let size = self.fresh(pos);
-        let var = self.vars.len() - 1;
-        self.vars[var].bound = Some(Bounded { bound, of, text });
-        size
+        Err(fail(
+            key.pos,
+            format!(
+                "{what}: the table covers rows {}, and {this}",
+                self.positions(&table.rows)
+            ),
+        ))
     }
 
     /// The size that the declared size `var` depends on, as its declaration writes it: sizes
@@ -876,31 +906,60 @@ impl Infer<'_> {
                     columns: x.rows,
                 })
             }
-            Builtin::Filter => {
-                let keep = self.shape(&args[0])?;
+            Builtin::Filter | Builtin::SortBy | Builtin::SortByDescending => {
+                let keys = self.shape(&args[0])?;
                 let table = self.shape(&args[1])?;
-                let lined_up = self.is_one(&keep.columns.size)
-                    && self.same(&keep.rows.size, &table.rows.size)
-                    && keep.rows.start == table.rows.start;
-                if !lined_up {
-                    let this = if self.is_one(&keep.columns.size) {
-                        format!("this covers rows {}", self.positions(&keep.rows))
-                    } else {
-                        format!("this has {} columns", self.show(&keep.columns.size))
-                    };
-                    return Err(fail(
-                        args[0].pos,
-                        format!(
-                            "`filter` keeps the rows where one column lined up with them holds: \
-                             the table covers rows {}, and {this}",
-                            self.positions(&table.rows)
-                        ),
-                    ));
-                }
-                let rows = self.fresh_bounded(expr.pos, Bound::Maximum, &args[1], table.rows.size);
+                let (bound, what) = match builtin {
+                    Builtin::Filter => (
+                        Bound::Maximum,
+                        "`filter` keeps the rows where one column lined up with them holds",
+                    ),
+                    _ => (
+                        Bound::Same,
+                        "a sort orders the rows by one column lined up with them",
+                    ),
+                };
+                let table = self.lined_up_column(&args[0], &keys, &table, what)?;
+                let text = self.rows_text(&args[1], &table.rows.size);
+                let rows = self.fresh_bounded(expr.pos, bound, table.rows.size, text);
                 Ok(Shape {
                     rows: Extent::of(rows),
                     columns: Extent::of(table.columns.size),
+                })
+            }
+            Builtin::Unique => {
+                let table = self.shape(&args[0])?;
+                let text = self.rows_text(&args[0], &table.rows.size);
+                let rows = self.fresh_bounded(expr.pos, Bound::Maximum, table.rows.size, text);
+                Ok(Shape {
+                    rows: Extent::of(rows),
+                    columns: Extent::of(table.columns.size),
+                })
+            }
+            Builtin::Stack => {
+                let first = self.shape(&args[0])?;
+                let second = self.shape(&args[1])?;
+                if !self.same(&first.columns.size, &second.columns.size) {
+                    return Err(fail(
+                        args[1].pos,
+                        format!(
+                            "`stack` takes two ranges with the same columns, and these have {} \
+                             and {}",
+                            self.show(&first.columns.size),
+                            self.show(&second.columns.size)
+                        ),
+                    ));
+                }
+                let text = format!(
+                    "{} + {}",
+                    self.rows_text(&args[0], &first.rows.size),
+                    self.rows_text(&args[1], &second.rows.size)
+                );
+                let of = first.rows.size.plus(&second.rows.size);
+                let rows = self.fresh_bounded(expr.pos, Bound::Same, of, text);
+                Ok(Shape {
+                    rows: Extent::of(rows),
+                    columns: Extent::of(first.columns.size),
                 })
             }
             Builtin::Lookup => {
@@ -1359,6 +1418,11 @@ impl Infer<'_> {
 
     /// Works out what a binding's cells hold, and checks it against its signature.
     fn cell_type(&mut self, binding: usize) {
+        // A binding whose shape is wrong has been reported already.
+        if self.shapes[binding].is_none() {
+            self.failed.insert(binding);
+            return;
+        }
         let b = &self.model.bindings[binding];
         let expr = self.model.definition(self.program, binding);
         let ty = match b.role {
@@ -1389,6 +1453,7 @@ impl Infer<'_> {
                 Ok(ty) => ty,
                 Err(error) => {
                     self.errors.push(error);
+                    self.failed.insert(binding);
                     return;
                 }
             },
@@ -1495,6 +1560,13 @@ impl Infer<'_> {
             }
             ExprKind::Column { table, name } => {
                 let Some(columns) = self.table(table, params) else {
+                    // A table that is wrong has been reported already.
+                    if let ExprKind::Name(table) = &table.kind
+                        && let Some(Symbol::Binding(binding)) = self.model.symbols.get(table)
+                        && self.failed.contains(binding)
+                    {
+                        return Ok(Ty::Any);
+                    }
                     let message = match &table.kind {
                         ExprKind::Name(table) => {
                             format!(
@@ -1576,6 +1648,37 @@ impl Infer<'_> {
                     Some(seed) => self.ty(seed, params)?,
                     None => Ty::Never,
                 };
+                if func.name == "stack"
+                    && let [first, second] = args.as_slice()
+                {
+                    let (a, b) = (self.table(first, params), self.table(second, params));
+                    let agree = match (&a, &b) {
+                        (Some(a), Some(b)) => {
+                            a.len() == b.len()
+                                && a.iter().zip(b).all(|(a, b)| {
+                                    a.name == b.name
+                                        && (a.ty.is_none() || b.ty.is_none() || a.ty == b.ty)
+                                })
+                        }
+                        (None, None) => true,
+                        _ => false,
+                    };
+                    if !agree {
+                        let show = |table: &Option<Vec<TableColumn>>| match table {
+                            Some(columns) => format!("`{}`", show_columns(columns)),
+                            None => "a range without named columns".to_string(),
+                        };
+                        return Err(Diagnostic::error(
+                            second.pos,
+                            format!(
+                                "`stack` takes tables with the same columns, in the same order: \
+                                 {} and {}",
+                                show(&a),
+                                show(&b)
+                            ),
+                        ));
+                    }
+                }
                 if let Some(builtin) = Builtin::lookup(&func.name) {
                     for ((arg, found), wanted) in args.iter().zip(&types).zip(builtin.takes()) {
                         if let Some(problem) = argument_problem(builtin, *wanted, *found) {
@@ -1682,9 +1785,12 @@ impl Infer<'_> {
         params: &BTreeMap<String, CellType>,
     ) -> Option<Vec<TableColumn>> {
         match &expr.kind {
-            ExprKind::Apply { func, args, .. } if func.name == "filter" && args.len() == 2 => {
-                self.table(&args[1], params)
-            }
+            ExprKind::Apply { func, args, .. } => match (func.name.as_str(), args.as_slice()) {
+                ("filter" | "sort_by" | "sort_by_descending", [_, table])
+                | ("unique", [table])
+                | ("stack", [table, _]) => self.table(table, params),
+                _ => None,
+            },
             ExprKind::Record(fields) => Some(
                 fields
                     .iter()

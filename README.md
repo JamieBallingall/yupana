@@ -813,8 +813,13 @@ Decided while building, 2026-11-17:
 - A formula cannot use the value of a size the data decides, as it cannot an unknown size's.
 - Ground keeps a size the data decides by name in the file it prints, so that the file reads
   the same when run again, and lays its cells out at its bound.
-- `filter` is written `_xlfn._xlws.FILTER`. That prefix, and `_xlfn.HSTACK`'s, are to be
-  confirmed against [MS-XLSX] §2.2.2 before 0.3 is released.
+- `filter` is written `_xlfn._xlws.FILTER`, and the rest `_xlfn.SORTBY`, `_xlfn.UNIQUE`,
+  `_xlfn.VSTACK` and `_xlfn.HSTACK`. These prefixes are to be confirmed against [MS-XLSX]
+  §2.2.2 before 0.3 is released.
+- `stack` of a table and a range without named columns is refused: the result's columns would
+  have names for only part of its rows.
+- A sort writes its table twice, once to sort and once to count its rows. LET would write it
+  once; that is left until a table worked out twice shows up as slow.
 
 ### Lambdas inside expressions
 

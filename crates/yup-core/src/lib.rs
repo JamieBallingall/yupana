@@ -776,6 +776,93 @@ below = sum big.units
         }
     }
 
+    const STACKED: &str = "\
+sales : Value at main B2
+sales = csv \"sales.csv\"
+more : Value sales down 1
+more = csv \"more.csv\"
+both_n : Size Same sales_n + more_n
+both : Formula size [both_n, 2] at main E2
+both = stack sales more
+ranked_n : Size Same both_n
+ranked : Formula size [ranked_n, 2] at main H2
+ranked = sort_by_descending both.units both
+regions_n : Size Maximum both_n
+regions : Formula size [regions_n, 1] at main K2
+regions = unique both.region
+total : Formula regions down 1
+total = sum both.units
+";
+
+    #[test]
+    fn tables_are_stacked_sorted_and_made_unique() {
+        let inputs = |more: &str| {
+            Inputs::from([
+                (
+                    "sales.csv".to_string(),
+                    "region,units\nNorth,10\nSouth,12\nnorth,9\n".to_string(),
+                ),
+                ("more.csv".to_string(), more.to_string()),
+            ])
+        };
+        let good = inputs("region,units\nEast,4\n");
+        let listing = show(&file(STACKED), Step::Lower, &good)
+            .expect("lowers")
+            .text;
+        for line in [
+            "  E2     =_xlfn.VSTACK(sales,more)",
+            "  H2     =_xlfn.SORTBY(both,INDEX(both,0,2),-1,_xlfn.SEQUENCE(ROWS(both)),1)",
+            "  K2     =_xlfn.UNIQUE(INDEX(both,0,1))",
+            "  K6     =SUM(INDEX(both,0,2))",
+        ] {
+            assert!(listing.contains(line), "{line}\n{listing}");
+        }
+        let typed = show(&file(STACKED), Step::Infer, &good)
+            .expect("infers")
+            .text;
+        assert!(
+            typed.contains(
+                "ranked : Formula { region : Text, units : Number } size [ranked_n, 2] at main H2"
+            ),
+            "{typed}"
+        );
+        let swapped = show(
+            &file(STACKED),
+            Step::Infer,
+            &inputs("units,region\n4,East\n"),
+        )
+        .expect_err("columns in another order");
+        assert_eq!(
+            swapped[0].to_string(),
+            "11:20: error: `stack` takes tables with the same columns, in the same order: \
+             `{ region : Text, units : Number }` and `{ units : Number, region : Text }`"
+        );
+        for (from, to, message) in [
+            (
+                "sort_by_descending both.units both",
+                "sort_by_descending sales.units both",
+                "14:34: error: a sort orders the rows by one column lined up with them: the \
+                 table covers rows [0, both_n), and this covers rows [0, 3)",
+            ),
+            (
+                "ranked_n : Size Same both_n",
+                "ranked_n : Size Same sales_n",
+                "13:24: error: `ranked_n` is declared `Size Same sales_n` at 12:1, and the size \
+                 made at 14:10 is `Size Same both_n`",
+            ),
+            (
+                "stack sales more",
+                "stack sales more.units",
+                "11:24: error: `stack` takes two ranges with the same columns, and these have 2 \
+                 and 1",
+            ),
+        ] {
+            let source = file(&STACKED.replace(from, to));
+            let errors = show(&source, Step::Infer, &good).expect_err(to);
+            assert_eq!(errors[0].to_string(), message, "{to}");
+        }
+    }
+
     #[test]
     fn a_column_is_written_with_a_dot_and_no_spaces() {
         let source = "a : Formula at main B2\na = 1 . 5\n";
