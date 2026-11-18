@@ -867,8 +867,11 @@ totals = map (\r -> sum_if (sales.region == r) sales.units) regions
   it; the error asks for another name. It sits beside the bindings it uses, where a name that
   meant two things in one line would be easy to misread. A `Lambda` binding's parameter may
   still hide a binding, as in 0.2.*
-- **L3. Errors inside a lambda.** How a message names both the size of a range from outside the
-  lambda and the size of a parameter, so that a mismatch between them is clear.
+- **L3. Errors inside a lambda.** *Settled 2026-11-17: a message about sizes inside a lambda
+  says where each comes from, a parameter and what it is given, or a range from outside the
+  lambda. For `map (\r -> r + sales.units) regions`: the lambda gives `sales_n` rows, not one
+  value: `r` is one value of `regions`, and `sales.units` has `sales_n` rows, from outside the
+  lambda. The two look alike in the file, so the message tells them apart.*
 
 ## The range model
 
