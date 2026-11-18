@@ -1,4 +1,4 @@
-# The `.yup` language, version 0.2
+# The `.yup` language, version 0.3
 
 This is a reference for the language as the tool implements it. It is provisional: the README
 records why each choice was made and what is still open. Everything here is illustrated in

@@ -5,9 +5,11 @@ on 2026-11-17. The names of the crates and the command are not decided.
 
 > **Seed capsule,** drafted 2026-10-14. This is a design record, not documentation of code. A
 > first version of the whole pipeline, `.yup` 0.1, was built on 2026-10-14 to try the design end to
-> end, and 0.2, which settles much of its syntax, on 2026-11-03. The syntax is still provisional:
-> [docs/language.md](docs/language.md) describes it, and [Built for 0.1](#built-for-01) and
-> [Built for 0.2](#built-for-02) list what was decided on the way.
+> end, 0.2, which settles much of its syntax, on 2026-11-03, and 0.3, which adds tables and
+> lambdas inside expressions, on 2026-11-18. The syntax is still provisional:
+> [docs/language.md](docs/language.md) describes it, and [Built for 0.1](#built-for-01),
+> [Built for 0.2](#built-for-02) and [Built for 0.3](#built-for-03-tables-and-lambdas) list
+> what was decided on the way.
 
 ## What this is
 
@@ -473,7 +475,7 @@ replaced by their values. Running the pipeline on it gives it back unchanged.
   argument to a function that takes one.*
 - Whether a CSV table gets a role of its own, `Table`, rather than being a kind of `Value`.
   *0.3, as designed: no; a table is a type. See
-  [Designed for 0.3](#designed-for-03-tables-and-lambdas).*
+  [Built for 0.3](#built-for-03-tables-and-lambdas).*
 - A flag that turns warnings into errors.
 
 ## Built for 0.2
@@ -655,15 +657,18 @@ is provisional. [docs/language.md](docs/language.md) describes 0.2 as it is buil
   library cannot run WebAssembly, so a Python package would need a dependency or a native build
   for each platform. A release's tag is now the only place the language's version is written.
 
-## Designed for 0.3: tables and lambdas
+## Built for 0.3: tables and lambdas
 
-Drafted 2026-11-17, and not built. 0.2 can read a table and look values up in it, but nothing
-in it changes how many rows a range has once the data is known: there is no filter, sort,
-distinct or stack. Those are the spreadsheet app's general array functions, which a model
-written by hand needs as much as one generated from a query, so 0.3 adds them, with lambdas
-inside expressions to combine them: one total for each key that occurs is a `map` over the
-`unique` keys, not a function of its own. Anything that can be composed from these, and from
-what 0.2 already has, is left to whoever writes the `.yup`.
+Designed 2026-11-17 and built by 2026-11-18, with what was decided while building recorded
+beside each part. [docs/language.md](docs/language.md) describes 0.3 as it is built.
+
+0.2 can read a table and look values up in it, but nothing in it changes how many rows a range
+has once the data is known: there is no filter, sort, distinct or stack. Those are the
+spreadsheet app's general array functions, which a model written by hand needs as much as one
+generated from a query, so 0.3 adds them, with lambdas inside expressions to combine them: one
+total for each key that occurs is a `map` over the `unique` keys, not a function of its own.
+Anything that can be composed from these, and from what 0.2 already has, is left to whoever
+writes the `.yup`.
 
 **In scope:** a table type; building a table from columns; `filter`, `sort_by`, `unique` and
 `stack`; the size variables they need; and lambdas as arguments to `map`, `by_row`,
