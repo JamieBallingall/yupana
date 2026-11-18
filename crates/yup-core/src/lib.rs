@@ -674,6 +674,50 @@ latest = lookup (maximum sales.year) sales.year sales.units
     }
 
     #[test]
+    fn a_table_is_built_from_columns() {
+        let inputs = sales_inputs("year,units\n2024,10\n2025,12\n");
+        let built = |definition: &str| {
+            format!("{SALES}doubled : Formula at main G2\ndoubled = {definition}\n")
+        };
+        let source = built("{ year = sales.year, units = sales.units * 2 }");
+        let typed = show(&file(&source), Step::Infer, &inputs)
+            .expect("infers")
+            .text;
+        assert!(
+            typed.contains(
+                "doubled : Formula { year : Number, units : Number } size [2, 2] at main G2"
+            ),
+            "{typed}"
+        );
+        let listing = show(&file(&source), Step::Lower, &inputs)
+            .expect("lowers")
+            .text;
+        assert!(
+            listing.contains("  G2     =_xlfn.HSTACK(INDEX(sales,0,1),INDEX(sales,0,2)*2)"),
+            "{listing}"
+        );
+        for (definition, message) in [
+            (
+                "{ year = sales.year, rate = 0.1 }",
+                "10:39: error: the columns `year` and `rate` of a table have different numbers \
+                 of rows: 2 and 1",
+            ),
+            (
+                "{ years = 1 .. 3 }",
+                "10:23: error: a column of a table is one column, and `years` has 3",
+            ),
+            (
+                "{ year = sales.year, year = sales.units }",
+                "10:32: error: the column `year` is given twice",
+            ),
+        ] {
+            let errors =
+                show(&file(&built(definition)), Step::Infer, &inputs).expect_err(definition);
+            assert_eq!(errors[0].to_string(), message, "{definition}");
+        }
+    }
+
+    #[test]
     fn a_column_is_written_with_a_dot_and_no_spaces() {
         let source = "a : Formula at main B2\na = 1 . 5\n";
         assert_eq!(

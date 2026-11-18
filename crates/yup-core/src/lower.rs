@@ -831,10 +831,16 @@ impl Lowerer<'_> {
                     ],
                 )
             }
-            ExprKind::Text(_)
-            | ExprKind::Constructor(_)
-            | ExprKind::Record(_)
-            | ExprKind::Update { .. } => unreachable!("Resolve keeps settings out of formulas"),
+            ExprKind::Record(fields) => {
+                let columns = fields
+                    .iter()
+                    .map(|field| self.formula(&field.value, scope))
+                    .collect::<Result<Vec<_>, _>>()?;
+                call("_xlfn.HSTACK", &columns)
+            }
+            ExprKind::Text(_) | ExprKind::Constructor(_) | ExprKind::Update { .. } => {
+                unreachable!("Resolve keeps settings out of formulas")
+            }
         };
         Ok(formula)
     }

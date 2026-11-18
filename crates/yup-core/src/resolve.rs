@@ -1304,9 +1304,30 @@ impl Scope<'_> {
                 expr.pos,
                 format!("`{word}` is a setting of a style, not a value a formula can use"),
             )),
-            ExprKind::Record(_) | ExprKind::Update { .. } => errors.push(Diagnostic::error(
+            // A record in a formula is a table, built from its fields as its columns.
+            ExprKind::Record(fields) => {
+                if fields.is_empty() {
+                    errors.push(Diagnostic::error(
+                        expr.pos,
+                        "a table has at least one column",
+                    ));
+                }
+                for (index, field) in fields.iter().enumerate() {
+                    if fields[..index]
+                        .iter()
+                        .any(|earlier| earlier.name.name == field.name.name)
+                    {
+                        errors.push(Diagnostic::error(
+                            field.name.pos,
+                            format!("the column `{}` is given twice", field.name.name),
+                        ));
+                    }
+                }
+            }
+            ExprKind::Update { .. } => errors.push(Diagnostic::error(
                 expr.pos,
-                "a record belongs to a style, a sheet or the workbook, not to a formula",
+                "a record built on another belongs to a style, a sheet or the workbook, not to a \
+                 formula",
             )),
             _ => {}
         }

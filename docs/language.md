@@ -83,9 +83,9 @@ type that names its parameters and its result, `Number -> Number -> Number`, and
 the kind of record it is: `Cell`, `Font`, `Border`, `Edge`, `Alignment` or `Color`.
 
 A table's type names its columns, in order, and what each holds: `{ year : Number, region :
-Text }`. A binding is a table if it is read from a file or is another table by its name, and
-Infer writes its type into its signature as it does a cell's. A table's type in a signature is
-checked: the same columns, in the same order, holding the same types.
+Text }`. A binding is a table if it is read from a file, is a record of columns, or is another
+table by its name, and Infer writes its type into its signature as it does a cell's. A table's
+type in a signature is checked: the same columns, in the same order, holding the same types.
 
 A size is `Size Fixed`, with a definition, `s = 4`, or `Size Unknown`, which stands alone: the
 workbook decides its value.
@@ -133,6 +133,11 @@ the type that the table's signature gives it, and is an error without one.
 
 `history.units` is one column of a table, written with no space around the `.`. Its name may be
 a keyword, such as `size`, since it is a column's name rather than a binding's.
+
+A record in a formula is a table, its fields its columns: `{ year = history.year, revenue =
+history.units * history.price }` is written `HSTACK(…)`. Each field is one column, and every
+column has the same rows, by size and span: HSTACK would pad a shorter one with `#N/A` rather
+than stretch it.
 
 ## Lambdas
 

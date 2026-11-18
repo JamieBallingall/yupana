@@ -361,8 +361,61 @@ impl Infer<'_> {
             | ExprKind::Bool(_)
             | ExprKind::Text(_)
             | ExprKind::Constructor(_)
-            | ExprKind::Record(_)
             | ExprKind::Update { .. } => Ok(Shape::scalar()),
+            // HSTACK pads a shorter column with #N/A rather than stretching it, so every column
+            // has the same rows, by size and span.
+            ExprKind::Record(fields) => {
+                let mut rows: Option<(Extent, &Ident)> = None;
+                for field in fields {
+                    let shape = self.shape(&field.value)?;
+                    if !self.is_one(&shape.columns.size) {
+                        return Err(fail(
+                            field.value.pos,
+                            format!(
+                                "a column of a table is one column, and `{}` has {}",
+                                field.name.name,
+                                self.show(&shape.columns.size)
+                            ),
+                        ));
+                    }
+                    match &rows {
+                        None => rows = Some((shape.rows, &field.name)),
+                        Some((first, first_name)) => {
+                            let problem = if self.same(&first.size, &shape.rows.size) {
+                                (first.start != shape.rows.start).then(|| {
+                                    format!(
+                                        "cover different rows: positions {} and {}; `lag` \
+                                         shifts a range along, and `tail` and `init` drop its \
+                                         ends",
+                                        self.positions(first),
+                                        self.positions(&shape.rows)
+                                    )
+                                })
+                            } else {
+                                Some(format!(
+                                    "have different numbers of rows: {} and {}",
+                                    self.show(&first.size),
+                                    self.show(&shape.rows.size)
+                                ))
+                            };
+                            if let Some(problem) = problem {
+                                return Err(fail(
+                                    field.value.pos,
+                                    format!(
+                                        "the columns `{}` and `{}` of a table {problem}",
+                                        first_name.name, field.name.name
+                                    ),
+                                ));
+                            }
+                        }
+                    }
+                }
+                let (rows, _) = rows.expect("Resolve gives a table at least one column");
+                Ok(Shape {
+                    rows,
+                    columns: Extent::of(SizeExpr::constant(count(fields.len()))),
+                })
+            }
             ExprKind::Column { table, .. } => {
                 let table = self.shape(table)?;
                 Ok(Shape {
@@ -1230,10 +1283,13 @@ impl Infer<'_> {
             ExprKind::Number { .. } => Ty::Known(CellType::Number),
             ExprKind::Str(_) => Ty::Known(CellType::Text),
             ExprKind::Bool(_) => Ty::Known(CellType::Logical),
-            ExprKind::Text(_)
-            | ExprKind::Constructor(_)
-            | ExprKind::Record(_)
-            | ExprKind::Update { .. } => Ty::Any,
+            ExprKind::Text(_) | ExprKind::Constructor(_) | ExprKind::Update { .. } => Ty::Any,
+            ExprKind::Record(fields) => {
+                for field in fields {
+                    self.ty(&field.value, params)?;
+                }
+                Ty::Any
+            }
             ExprKind::Column { table, name } => {
                 let Some(columns) = self.table(table, params) else {
                     let message = match &table.kind {
@@ -1417,8 +1473,24 @@ impl Infer<'_> {
     }
 
     /// The columns of an expression that is a table, if it is one.
-    fn table(&self, expr: &Expr, params: &BTreeMap<String, CellType>) -> Option<Vec<TableColumn>> {
+    fn table(
+        &mut self,
+        expr: &Expr,
+        params: &BTreeMap<String, CellType>,
+    ) -> Option<Vec<TableColumn>> {
         match &expr.kind {
+            ExprKind::Record(fields) => Some(
+                fields
+                    .iter()
+                    .map(|field| TableColumn {
+                        name: field.name.name.clone(),
+                        ty: match self.ty(&field.value, params) {
+                            Ok(Ty::Known(ty)) => Some(ty),
+                            _ => None,
+                        },
+                    })
+                    .collect(),
+            ),
             ExprKind::Name(name) if !params.contains_key(name) => {
                 match self.model.symbols.get(name) {
                     Some(Symbol::Binding(binding)) => self.tables[*binding].clone(),
