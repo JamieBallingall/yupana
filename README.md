@@ -747,6 +747,11 @@ ranked = sort_by by_units.region by_units
 `ranked` is by region, and within a region by units going down. The second key comes from
 `by_units`, not `sales`, because a sort's result does not line up with what it sorted.
 
+`stack a b` needs `b`'s columns to have the names and types of `a`'s, in the same order
+(decided 2026-11-17, question T5). Otherwise it is refused, and the message shows both orders.
+Reordering is one line, `{ year = b.year, units = b.units }`, and keeps the formula what the
+file says.
+
 `unique` ignores case, as `==` does, because UNIQUE does. The function names in the file, with
 their `_xlfn.` prefixes, are to be confirmed against [MS-XLSX] when built.
 
@@ -849,8 +854,8 @@ totals = map (\r -> sum_if (sales.region == r) sales.units) regions
 - **T4. Columns of different types.** *Settled 2026-11-17: a column read from a file has one
   type, and a mixed one is refused, as under Tables. An `Any` type would have meant conversions
   in the language to clean up data that its writer can keep clean.*
-- **T5. `stack` of two tables with the same columns in another order:** refused, or matched by
-  name.
+- **T5. `stack` of two tables with the same columns in another order.** *Settled 2026-11-17:
+  refused, as under Operations. Matching by name would write a reordering the file never says.*
 - **T6. Summarising over the keys that occur.** *Settled 2026-11-17: with lambdas, above, as
   `map (\r -> sum_if (t.region == r) t.units) (unique t.region)`, and no function of its own.*
 - **L1. Which way a lambda is given a range.** Whether `by_row` and `by_column` are worth two
