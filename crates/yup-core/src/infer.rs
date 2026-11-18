@@ -202,6 +202,8 @@ struct Infer<'a> {
     columns: BTreeMap<Pos, usize>,
     /// The bindings whose types could not be worked out, already reported.
     failed: BTreeSet<usize>,
+    /// The columns of each row that `by_row` gives its lambda, by the parameter's name.
+    rows: BTreeMap<String, Vec<TableColumn>>,
 }
 
 /// What a cell holds, as far as Infer can tell: one type, any of them, or none at all, which an
@@ -270,6 +272,7 @@ pub fn infer(program: &Program, model: &Model) -> Result<Typed, Vec<Diagnostic>>
         tables: vec![None; model.bindings.len()],
         columns: BTreeMap::new(),
         failed: BTreeSet::new(),
+        rows: BTreeMap::new(),
     };
     for (var, size) in model.sizes.iter().enumerate() {
         let bound = match &size.kind {
@@ -531,7 +534,8 @@ impl Infer<'_> {
             | ExprKind::Bool(_)
             | ExprKind::Text(_)
             | ExprKind::Constructor(_)
-            | ExprKind::Update { .. } => Ok(Shape::scalar()),
+            | ExprKind::Update { .. }
+            | ExprKind::Lambda { .. } => Ok(Shape::scalar()),
             // HSTACK pads a shorter column with #N/A rather than stretching it, so every column
             // has the same rows, by size and span.
             ExprKind::Record(fields) => {
@@ -668,6 +672,198 @@ impl Infer<'_> {
         }
     }
 
+    /// The shape of `map`, `by_row`, `by_column`, `reduce` or `scan`, whose lambda gives one
+    /// value each time it is called. In the app, a lambda that gives a range shows `#CALC!` when
+    /// the workbook calculates; here it is refused where it is written.
+    fn lambda_call(&mut self, builtin: Builtin, args: &[Expr]) -> Option<Inferred> {
+        let name = builtin.name();
+        let (params, result): (Vec<(Shape, String)>, Shape) = match builtin {
+            Builtin::Map | Builtin::ByRow | Builtin::ByColumn => {
+                let x = match self.shape(&args[1]) {
+                    Ok(x) => x,
+                    Err(error) => return Some(Err(error)),
+                };
+                let of = crate::printer::expression(&args[1]);
+                match builtin {
+                    Builtin::Map => (
+                        vec![(Shape::scalar(), format!("one value of `{of}`"))],
+                        x.clone(),
+                    ),
+                    Builtin::ByRow => (
+                        vec![(
+                            Shape {
+                                rows: Extent::one(),
+                                columns: Extent::of(x.columns.size.clone()),
+                            },
+                            format!("one row of `{of}`"),
+                        )],
+                        Shape {
+                            rows: x.rows.clone(),
+                            columns: Extent::one(),
+                        },
+                    ),
+                    _ => (
+                        vec![(
+                            Shape {
+                                rows: Extent::of(x.rows.size.clone()),
+                                columns: Extent::one(),
+                            },
+                            format!("one column of `{of}`"),
+                        )],
+                        Shape {
+                            rows: Extent::one(),
+                            columns: x.columns.clone(),
+                        },
+                    ),
+                }
+            }
+            Builtin::Reduce | Builtin::Scan => {
+                let first = match self.shape(&args[1]) {
+                    Ok(first) => first,
+                    Err(error) => return Some(Err(error)),
+                };
+                if !self.is_scalar(&first) {
+                    return Some(Err(fail(
+                        args[1].pos,
+                        format!("the first value of `{name}` is one value"),
+                    )));
+                }
+                let x = match self.shape(&args[2]) {
+                    Ok(x) => x,
+                    Err(error) => return Some(Err(error)),
+                };
+                let of = crate::printer::expression(&args[2]);
+                let gives = if builtin == Builtin::Scan {
+                    x.clone()
+                } else {
+                    Shape::scalar()
+                };
+                (
+                    vec![
+                        (Shape::scalar(), "the value so far".to_string()),
+                        (Shape::scalar(), format!("one value of `{of}`")),
+                    ],
+                    gives,
+                )
+            }
+            _ => return None,
+        };
+        let function = &args[0];
+        let (names, body, outer): (Vec<String>, &Expr, bool) = match &function.kind {
+            ExprKind::Lambda { params, body } => (
+                params.iter().map(|param| param.name.clone()).collect(),
+                body,
+                true,
+            ),
+            ExprKind::Name(lambda) => {
+                let Some(&Symbol::Binding(binding)) = self.model.symbols.get(lambda) else {
+                    unreachable!("Resolve checks the function's name");
+                };
+                (
+                    self.model.bindings[binding].params.clone(),
+                    self.model.definition(self.program, binding),
+                    false,
+                )
+            }
+            _ => unreachable!("Resolve checks that the function is a lambda or a `Lambda`"),
+        };
+        // An inline lambda also sees the parameters of the lambdas around it; a `Lambda` of the
+        // file sees its own only.
+        let mut frame = if outer {
+            self.params.last().cloned().unwrap_or_default()
+        } else {
+            BTreeMap::new()
+        };
+        for (name, (shape, _)) in names.iter().zip(&params) {
+            frame.insert(name.clone(), shape.clone());
+        }
+        self.params.push(frame);
+        let gives = self.shape(body);
+        let problem = match &gives {
+            Ok(gives) if !self.is_scalar(gives) => {
+                let described: Vec<(String, String)> = names
+                    .iter()
+                    .cloned()
+                    .zip(params.iter().map(|(_, what)| what.clone()))
+                    .collect();
+                Some(self.one_value_problem(name, gives, body, &described))
+            }
+            _ => None,
+        };
+        self.params.pop();
+        Some(match (gives, problem) {
+            (Err(error), _) => Err(error),
+            (Ok(_), Some(problem)) => Err(fail(function.pos, problem)),
+            (Ok(_), None) => Ok(result),
+        })
+    }
+
+    /// Why a lambda that gives a range is refused, naming where each range in its body comes
+    /// from: a parameter, and what the function gives it, or a binding outside the lambda.
+    fn one_value_problem(
+        &mut self,
+        func: &str,
+        gives: &Shape,
+        body: &Expr,
+        params: &[(String, String)],
+    ) -> String {
+        let mut parts: Vec<String> = Vec::new();
+        let mut stack = vec![body];
+        while let Some(expr) = stack.pop() {
+            let shown = crate::printer::expression(expr);
+            let part = match &expr.kind {
+                ExprKind::Name(name) => match params.iter().find(|(param, _)| param == name) {
+                    Some((_, what)) => Some(format!("`{name}` is {what}")),
+                    None => self.range_part(expr, &shown),
+                },
+                ExprKind::Column { .. } => self.range_part(expr, &shown),
+                _ => {
+                    stack.extend(expr.children().into_iter().rev());
+                    None
+                }
+            };
+            if let Some(part) = part
+                && !parts.contains(&part)
+            {
+                parts.push(part);
+            }
+        }
+        let mut message = format!(
+            "the lambda given to `{func}` gives {}, not one value",
+            self.shape_text(gives)
+        );
+        if !parts.is_empty() {
+            message.push_str(": ");
+            message.push_str(&parts.join(", and "));
+        }
+        message
+    }
+
+    /// How a range from outside a lambda is named in a message about the lambda, if it is one.
+    fn range_part(&mut self, expr: &Expr, shown: &str) -> Option<String> {
+        let shape = self.shape(expr).ok()?;
+        (!self.is_scalar(&shape)).then(|| {
+            format!(
+                "`{shown}` has {}, from outside the lambda",
+                self.shape_text(&shape)
+            )
+        })
+    }
+
+    /// A range's size in words: `sales_n rows`, `3 columns`, or both.
+    fn shape_text(&self, shape: &Shape) -> String {
+        let (rows, columns) = (self.show(&shape.rows.size), self.show(&shape.columns.size));
+        match (
+            self.is_one(&shape.rows.size),
+            self.is_one(&shape.columns.size),
+        ) {
+            (true, true) => "one value".to_string(),
+            (false, true) => format!("{rows} rows"),
+            (true, false) => format!("{columns} columns"),
+            (false, false) => format!("{rows} rows and {columns} columns"),
+        }
+    }
+
     /// A call of a lambda of the file's own. Its body is inferred with its parameters taking the
     /// shapes of the arguments, so each call has the shape its arguments give it.
     fn call(&mut self, func: &Ident, args: &[Expr]) -> Inferred {
@@ -778,6 +974,9 @@ impl Infer<'_> {
         args: &[Expr],
         seed: Option<&Expr>,
     ) -> Inferred {
+        if let Some(shape) = self.lambda_call(builtin, args) {
+            return shape;
+        }
         match builtin.kind() {
             Kind::Positionwise { fixed } => return self.positionwise(expr, builtin, fixed, args),
             Kind::Reduce { fixed } => {
@@ -1427,11 +1626,11 @@ impl Infer<'_> {
         let expr = self.model.definition(self.program, binding);
         let ty = match b.role {
             Role::Lambda => {
-                let params: BTreeMap<String, CellType> = b
+                let params: BTreeMap<String, Ty> = b
                     .params
                     .iter()
                     .cloned()
-                    .zip(b.function.iter().copied())
+                    .zip(b.function.iter().map(|&ty| Ty::Known(ty)))
                     .collect();
                 let result = *b.function.last().expect("a lambda's type has a result");
                 match self.ty(expr, &params) {
@@ -1537,7 +1736,7 @@ impl Infer<'_> {
 
     /// What an expression's cells hold. A lambda's parameters have the types its signature
     /// gives them.
-    fn ty(&mut self, expr: &Expr, params: &BTreeMap<String, CellType>) -> Result<Ty, Diagnostic> {
+    fn ty(&mut self, expr: &Expr, params: &BTreeMap<String, Ty>) -> Result<Ty, Diagnostic> {
         let number = |ty: Ty, what: &str| -> Result<(), Diagnostic> {
             match ty {
                 Ty::Known(CellType::Text) => Err(Diagnostic::error(
@@ -1551,7 +1750,10 @@ impl Infer<'_> {
             ExprKind::Number { .. } => Ty::Known(CellType::Number),
             ExprKind::Str(_) => Ty::Known(CellType::Text),
             ExprKind::Bool(_) => Ty::Known(CellType::Logical),
-            ExprKind::Text(_) | ExprKind::Constructor(_) | ExprKind::Update { .. } => Ty::Any,
+            ExprKind::Text(_)
+            | ExprKind::Constructor(_)
+            | ExprKind::Update { .. }
+            | ExprKind::Lambda { .. } => Ty::Any,
             ExprKind::Record(fields) => {
                 for field in fields {
                     self.ty(&field.value, params)?;
@@ -1586,6 +1788,9 @@ impl Infer<'_> {
                         format!(
                             "{} has no column `{}`; its columns are {}",
                             match &table.kind {
+                                ExprKind::Name(row) if params.contains_key(row) => {
+                                    format!("`{row}`, a row of a table,")
+                                }
                                 ExprKind::Name(table) => format!("the table `{table}`"),
                                 _ => "the table".to_string(),
                             },
@@ -1598,7 +1803,7 @@ impl Infer<'_> {
                 columns[index].ty.map_or(Ty::Any, Ty::Known)
             }
             ExprKind::Name(name) => match params.get(name) {
-                Some(ty) => Ty::Known(*ty),
+                Some(ty) => *ty,
                 None => match self.model.symbols.get(name) {
                     Some(Symbol::Binding(binding)) => {
                         self.types[*binding].map_or(Ty::Any, Ty::Known)
@@ -1637,6 +1842,20 @@ impl Infer<'_> {
                 ty
             }
             ExprKind::Range { .. } => Ty::Known(CellType::Number),
+            ExprKind::Apply { func, args, .. }
+                if Builtin::lookup(&func.name).is_some_and(|builtin| {
+                    matches!(
+                        builtin,
+                        Builtin::Map
+                            | Builtin::ByRow
+                            | Builtin::ByColumn
+                            | Builtin::Reduce
+                            | Builtin::Scan
+                    )
+                }) =>
+            {
+                self.lambda_ty(&func.name, args, params)?
+            }
             ExprKind::Apply {
                 func, args, seed, ..
             } => {
@@ -1737,6 +1956,74 @@ impl Infer<'_> {
         })
     }
 
+    /// What `map` and the others give: what their lambda gives, and for `reduce` and `scan`
+    /// what their first value holds too. A row given to `by_row`'s lambda keeps the table's
+    /// columns, so `row.units` is checked against them.
+    fn lambda_ty(
+        &mut self,
+        func: &str,
+        args: &[Expr],
+        params: &BTreeMap<String, Ty>,
+    ) -> Result<Ty, Diagnostic> {
+        let accumulates = matches!(func, "reduce" | "scan");
+        let data = if accumulates { &args[2] } else { &args[1] };
+        let first = if accumulates {
+            Some(self.ty(&args[1], params)?)
+        } else {
+            None
+        };
+        let item = self.ty(data, params)?;
+        let given: Vec<Ty> = first.into_iter().chain([item]).collect();
+        let gives = match &args[0].kind {
+            ExprKind::Lambda {
+                params: names,
+                body,
+            } => {
+                let mut inner = params.clone();
+                for (name, ty) in names.iter().zip(&given) {
+                    inner.insert(name.name.clone(), *ty);
+                }
+                let row = (func == "by_row")
+                    .then(|| self.table(data, params))
+                    .flatten();
+                if let (Some(columns), [name]) = (row, names.as_slice()) {
+                    self.rows.insert(name.name.clone(), columns);
+                }
+                let gives = self.ty(body, &inner);
+                for name in names {
+                    self.rows.remove(&name.name);
+                }
+                gives?
+            }
+            ExprKind::Name(lambda) => {
+                let Some(&Symbol::Binding(binding)) = self.model.symbols.get(lambda) else {
+                    unreachable!("Resolve checks the function's name");
+                };
+                let b = &self.model.bindings[binding];
+                for ((param, wanted), found) in b.params.iter().zip(&b.function).zip(&given) {
+                    if let Ty::Known(found) = found
+                        && found != wanted
+                    {
+                        return Err(Diagnostic::error(
+                            args[0].pos,
+                            format!(
+                                "`{func}` gives `{lambda}` {} for `{param}`, which takes {}",
+                                found.word(),
+                                wanted.word()
+                            ),
+                        ));
+                    }
+                }
+                Ty::Known(*b.function.last().expect("a lambda's type has a result"))
+            }
+            _ => unreachable!("Resolve checks that the function is a lambda or a `Lambda`"),
+        };
+        Ok(match first {
+            Some(first) => join(first, gives),
+            None => gives,
+        })
+    }
+
     /// The columns of a table read from a file. A column of blanks only takes the type that
     /// the signature gives it.
     fn read_table(&mut self, binding: usize, read: &Table) -> Option<Vec<TableColumn>> {
@@ -1779,11 +2066,7 @@ impl Infer<'_> {
     }
 
     /// The columns of an expression that is a table, if it is one.
-    fn table(
-        &mut self,
-        expr: &Expr,
-        params: &BTreeMap<String, CellType>,
-    ) -> Option<Vec<TableColumn>> {
+    fn table(&mut self, expr: &Expr, params: &BTreeMap<String, Ty>) -> Option<Vec<TableColumn>> {
         match &expr.kind {
             ExprKind::Apply { func, args, .. } => match (func.name.as_str(), args.as_slice()) {
                 ("filter" | "sort_by" | "sort_by_descending", [_, table])
@@ -1803,12 +2086,11 @@ impl Infer<'_> {
                     })
                     .collect(),
             ),
-            ExprKind::Name(name) if !params.contains_key(name) => {
-                match self.model.symbols.get(name) {
-                    Some(Symbol::Binding(binding)) => self.tables[*binding].clone(),
-                    _ => None,
-                }
-            }
+            ExprKind::Name(name) if params.contains_key(name) => self.rows.get(name).cloned(),
+            ExprKind::Name(name) => match self.model.symbols.get(name) {
+                Some(Symbol::Binding(binding)) => self.tables[*binding].clone(),
+                _ => None,
+            },
             _ => None,
         }
     }

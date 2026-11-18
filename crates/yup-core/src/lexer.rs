@@ -42,6 +42,8 @@ pub enum Token {
     /// `_` on its own. Nothing in the language uses it; it is read so that the `_` an older
     /// signature wrote for the default style gets an error that says what to write instead.
     Underscore,
+    /// The `\` that starts a lambda.
+    Backslash,
     Arrow,
     Plus,
     PlusPlus,
@@ -85,6 +87,7 @@ impl Token {
             Token::Colon => ":",
             Token::Equals => "=",
             Token::Underscore => "_",
+            Token::Backslash => "\\",
             Token::Arrow => "->",
             Token::Plus => "+",
             Token::PlusPlus => "++",
@@ -480,6 +483,7 @@ impl Lexer {
             '}' => Token::RBrace,
             '*' => Token::Star,
             '^' => Token::Caret,
+            '\\' => Token::Backslash,
             '-' if next == Some('>') => two(Token::Arrow),
             '-' => Token::Minus,
             '@' => {

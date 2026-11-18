@@ -819,6 +819,24 @@ impl Lowerer<'_> {
                     call(&func.name, &args)
                 }
             },
+            // Inside, the lambda sees its own parameters and those of the lambdas around it.
+            ExprKind::Lambda { params, body } => {
+                let mut inner: Vec<String> = scope.params.to_vec();
+                inner.extend(params.iter().map(|param| param.name.clone()));
+                let body = self.formula(
+                    body,
+                    Scope {
+                        params: &inner,
+                        ..scope
+                    },
+                )?;
+                let mut args: Vec<Formula> = params
+                    .iter()
+                    .map(|param| Formula::atom(format!("_xlpm.{}", param.name)))
+                    .collect();
+                args.push(body);
+                call("_xlfn.LAMBDA", &args)
+            }
             ExprKind::Column { table, .. } => {
                 let index = self.typed.columns[&expr.pos];
                 // INDEX with row 0 gives the whole column.

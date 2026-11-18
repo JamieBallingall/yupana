@@ -716,6 +716,9 @@ impl Parser {
     }
 
     fn expr(&mut self) -> Parsed<Expr> {
+        if *self.peek() == Token::Backslash {
+            return self.lambda();
+        }
         let first = self.disjunction()?;
         if *self.peek() != Token::DotDot {
             return Ok(first);
@@ -730,6 +733,28 @@ impl Parser {
             kind: ExprKind::Range {
                 first: Box::new(first),
                 last: Box::new(last),
+            },
+        })
+    }
+
+    /// `\x y -> body`. The body runs as far as it can, so a lambda given to a function is
+    /// written in parentheses: `map (\x -> x * 2) years`.
+    fn lambda(&mut self) -> Parsed<Expr> {
+        let pos = self.advance().pos;
+        let mut params = Vec::new();
+        while matches!(self.peek(), Token::Name(_)) {
+            params.push(self.ident()?);
+        }
+        if params.is_empty() {
+            return Err(self.unexpected("a lambda's parameters, as in `\\x -> x * 2`"));
+        }
+        self.expect(&Token::Arrow, "`->` after a lambda's parameters")?;
+        let body = self.expr()?;
+        Ok(Expr {
+            pos,
+            kind: ExprKind::Lambda {
+                params,
+                body: Box::new(body),
             },
         })
     }

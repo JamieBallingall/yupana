@@ -233,7 +233,7 @@ const ATOM: u8 = 10;
 
 fn precedence(expr: &Expr) -> u8 {
     match &expr.kind {
-        ExprKind::If { .. } | ExprKind::Range { .. } => LOOSE,
+        ExprKind::If { .. } | ExprKind::Range { .. } | ExprKind::Lambda { .. } => LOOSE,
         ExprKind::Binary { op, .. } => match op {
             BinOp::Or => OR,
             BinOp::And => AND,
@@ -357,6 +357,15 @@ fn write_expr(out: &mut String, expr: &Expr, context: u8) {
             write_expr(out, first, OR);
             out.push_str(" .. ");
             write_expr(out, last, OR);
+        }
+        ExprKind::Lambda { params, body } => {
+            out.push('\\');
+            for param in params {
+                out.push_str(&param.name);
+                out.push(' ');
+            }
+            out.push_str("-> ");
+            write_expr(out, body, LOOSE);
         }
         ExprKind::Column { table, name } => {
             // Only a name or another column goes before the `.` without parentheses.

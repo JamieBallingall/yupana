@@ -863,6 +863,101 @@ total = sum both.units
         }
     }
 
+    const LAMBDAS: &str = r#"sales : Value at main B2
+sales = csv "sales.csv"
+regions_n : Size Maximum sales_n
+regions : Formula size [regions_n, 1] at main F2
+regions = unique sales.region
+totals : Formula regions right 1
+totals = map (\key -> sum_if (sales.region == key) sales.units) regions
+revenue : Formula sales right 6
+revenue = by_row (\row -> row.units * row.price) sales
+running : Formula revenue right 1
+running = scan (\total x -> total + x) 0 revenue
+grand : Formula running right 1
+grand = reduce (\total x -> total + x) 0 revenue
+twice : Lambda Number -> Number
+twice x = x * 2
+doubled : Formula grand right 1
+doubled = map twice sales.units
+"#;
+
+    #[test]
+    fn a_lambda_inside_an_expression_gives_one_value_each_time() {
+        let inputs = sales_inputs("region,units,price\nNorth,10,2\nSouth,12,3\nnorth,9,2\n");
+        let listing = show(&file(LAMBDAS), Step::Lower, &inputs)
+            .expect("lowers")
+            .text;
+        for line in [
+            "  G2     =_xlfn.MAP(regions,_xlfn.LAMBDA(_xlpm.key,SUM(IF(INDEX(sales,0,1)=_xlpm.key,\
+             INDEX(sales,0,2),0))))",
+            "  J2     =_xlfn.BYROW(sales,_xlfn.LAMBDA(_xlpm.row,INDEX(_xlpm.row,0,2)*\
+             INDEX(_xlpm.row,0,3)))",
+            "  K2     =_xlfn.SCAN(0,revenue,_xlfn.LAMBDA(_xlpm.total,_xlpm.x,_xlpm.total+_xlpm.x))",
+            "  L2     =_xlfn.REDUCE(0,revenue,_xlfn.LAMBDA(_xlpm.total,_xlpm.x,_xlpm.total+_xlpm.x))",
+            "  M2     =_xlfn.MAP(INDEX(sales,0,2),twice)",
+        ] {
+            assert!(listing.contains(line), "{line}\n{listing}");
+        }
+        let typed = show(&file(LAMBDAS), Step::Infer, &inputs)
+            .expect("infers")
+            .text;
+        for line in [
+            "totals : Formula Number size [regions_n, 1] regions right 1",
+            "revenue : Formula Number size [3, 1] sales right 6",
+            "grand : Formula Number size [1, 1] running right 1",
+        ] {
+            assert!(typed.contains(line), "{line}\n{typed}");
+        }
+        for (from, to, message) in [
+            (
+                r"(\key -> sum_if (sales.region == key) sales.units)",
+                r"(\key -> key + sales.units)",
+                "11:15: error: the lambda given to `map` gives 3 rows, not one value: `key` is \
+                 one value of `regions`, and `sales.units` has 3 rows, from outside the lambda",
+            ),
+            (
+                r"(\key -> sum_if (sales.region == key) sales.units)",
+                r"(\sales -> 1)",
+                "11:16: error: `sales` is already a name here, and a lambda's parameter hides \
+                 none; give it a name of its own",
+            ),
+            (
+                r"(\key -> sum_if (sales.region == key) sales.units)",
+                r"(\a b -> 1)",
+                "11:15: error: `map` gives its lambda one value at a time, so the lambda takes \
+                 one parameter, as in `\\x -> …`",
+            ),
+            (
+                "row.units * row.price",
+                "row.units * row.cost",
+                "13:43: error: `row`, a row of a table, has no column `cost`; its columns are \
+                 region, units, price",
+            ),
+            (
+                r"(\key -> sum_if (sales.region == key) sales.units)",
+                "regions",
+                "11:14: error: `map` takes a function first: a lambda in parentheses, as in \
+                 `(\\x -> …)`, or a `Lambda` by its name",
+            ),
+            (
+                "totals = map",
+                r"totals = 1 + (\x -> x) + map",
+                "11:15: error: a lambda is given to a function that takes one: `map`, `by_row`, \
+                 `by_column`, `reduce` or `scan`",
+            ),
+            (
+                "map twice sales.units",
+                "map twice sales.region",
+                "21:15: error: `map` gives `twice` Text for `x`, which takes Number",
+            ),
+        ] {
+            let source = file(&LAMBDAS.replace(from, to));
+            let errors = show(&source, Step::Infer, &inputs).expect_err(to);
+            assert_eq!(errors[0].to_string(), message, "{to}");
+        }
+    }
+
     #[test]
     fn a_column_is_written_with_a_dot_and_no_spaces() {
         let source = "a : Formula at main B2\na = 1 . 5\n";

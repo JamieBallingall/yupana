@@ -160,6 +160,33 @@ there too, and a call is written as the app writes one: `discount(discount_rate,
 Inside a lambda, `lag`, `tail` and `init` say which way they work, `across` or `down`: the
 lambda is written once, however it is called.
 
+### Lambdas inside expressions
+
+A lambda can also be written where it is used, `\x -> e` or `\total x -> e`, as the first
+argument of a function that takes one, in parentheses. A `Lambda` of the file can be given there
+by its name instead, as in `map discount years`.
+
+```text
+totals : Formula regions right 1
+totals = map (\key -> sum_if (sales.region == key) sales.units) regions
+```
+
+| Function | The lambda is given | Result | Written as |
+|---|---|---|---|
+| `map f x` | each value of `x` | one value for each, lined up with `x` | `MAP(x,f)` |
+| `by_row f t` | each row of `t`, with its columns' names | one column, lined up with `t`'s rows | `BYROW(t,f)` |
+| `by_column f t` | each column of `t` | one row, lined up with `t`'s columns | `BYCOL(t,f)` |
+| `reduce f v x` | the value so far, from `v`, and each value of `x` | one value | `REDUCE(v,x,f)` |
+| `scan f v x` | the same | each value so far, lined up with `x` | `SCAN(v,x,f)` |
+
+- A lambda gives one value each time it is called. One that gives a range is an error where it
+  is written, which names where each range in it comes from: a parameter, and what it is given,
+  or a binding outside the lambda.
+- A lambda sees every binding of the file, and the parameters of the lambdas around it. Its
+  parameters follow the rules for names, and hide nothing: each takes a name of its own.
+- A row given to `by_row`'s lambda keeps its table's columns, so `row.units` is checked against
+  them.
+
 ## Values carried from one position to the next
 
 ```text

@@ -832,7 +832,7 @@ regions : Formula Text region_label down
 regions = unique sales.region
 
 totals : Formula Number style units regions right 2
-totals = map (\r -> sum_if (sales.region == r) sales.units) regions
+totals = map (\key -> sum_if (sales.region == key) sales.units) regions
 ```
 
 | Function | The lambda is given | Result | Written as |
@@ -873,7 +873,7 @@ totals = map (\r -> sum_if (sales.region == r) sales.units) regions
 - **T5. `stack` of two tables with the same columns in another order.** *Settled 2026-11-17:
   refused, as under Operations. Matching by name would write a reordering the file never says.*
 - **T6. Summarising over the keys that occur.** *Settled 2026-11-17: with lambdas, above, as
-  `map (\r -> sum_if (t.region == r) t.units) (unique t.region)`, and no function of its own.*
+  `map (\key -> sum_if (t.region == key) t.units) (unique t.region)`, and no function of its own.*
 - **L1. Which way a lambda is given a range.** *Settled 2026-11-17: two names, `by_row` and
   `by_column`, as `sum_rows` and `sum_columns` are, and as the app names BYROW and BYCOL. In
   `by down`, `down` could name either the rows or the way the results go.*
@@ -885,9 +885,22 @@ totals = map (\r -> sum_if (sales.region == r) sales.units) regions
   still hide a binding, as in 0.2.*
 - **L3. Errors inside a lambda.** *Settled 2026-11-17: a message about sizes inside a lambda
   says where each comes from, a parameter and what it is given, or a range from outside the
-  lambda. For `map (\r -> r + sales.units) regions`: the lambda gives `sales_n` rows, not one
-  value: `r` is one value of `regions`, and `sales.units` has `sales_n` rows, from outside the
-  lambda. The two look alike in the file, so the message tells them apart.*
+  lambda. For `map (\key -> key + sales.units) regions`: the lambda gives `sales_n` rows, not
+  one value: `key` is one value of `regions`, and `sales.units` has `sales_n` rows, from outside
+  the lambda. The two look alike in the file, so the message tells them apart.*
+
+Decided while building lambdas, 2026-11-18:
+
+- A lambda's parameter follows the rules for names, so `r` and `c`, which read as R1C1
+  notation, are not parameters. The examples above once used `\r`; they use `\key` now.
+- A table read from a file has a number of rows, so a message about it says `3 rows`, not
+  `sales_n rows`, except in a declaration of a size the data decides.
+- A lambda given to `map` and the others is written into the formula as `_xlfn.LAMBDA(…)`, and a
+  `Lambda` of the file by its defined name. `_xlfn.MAP`, `_xlfn.BYROW`, `_xlfn.BYCOL`,
+  `_xlfn.REDUCE`, `_xlfn.SCAN` and `_xlfn.LAMBDA` are to be confirmed against [MS-XLSX] §2.2.2
+  with the rest before 0.3 is released.
+- A parameter whose type Infer cannot tell, such as a value of a range of mixed types, is
+  checked as anything, as 0.2 checks a binding of mixed types.
 
 ## The range model
 

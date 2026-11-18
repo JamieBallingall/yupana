@@ -465,6 +465,11 @@ pub enum ExprKind {
         first: Box<Expr>,
         last: Box<Expr>,
     },
+    /// `\x y -> body`: a lambda, given to a function that takes one, such as `map`.
+    Lambda {
+        params: Vec<Ident>,
+        body: Box<Expr>,
+    },
     /// `table.name`: one column of a table, written with no space around the `.`.
     Column {
         table: Box<Expr>,
@@ -490,7 +495,9 @@ impl Expr {
             | ExprKind::Name(_)
             | ExprKind::Constructor(_) => Vec::new(),
             ExprKind::Apply { args, seed, .. } => args.iter().chain(seed.as_deref()).collect(),
-            ExprKind::Neg(operand) | ExprKind::Column { table: operand, .. } => vec![operand],
+            ExprKind::Neg(operand)
+            | ExprKind::Column { table: operand, .. }
+            | ExprKind::Lambda { body: operand, .. } => vec![operand],
             ExprKind::Binary { left, right, .. } => vec![left, right],
             ExprKind::If { cond, then, other } => vec![cond, then, other],
             ExprKind::List(rows) => rows.iter().flatten().collect(),

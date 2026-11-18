@@ -1175,6 +1175,15 @@ struct Scope<'a> {
 }
 
 /// How a lambda is called, for messages: `name a b`.
+/// How many parameters the function given to `map` and the others takes.
+fn lambda_parameters(func: &str) -> Option<usize> {
+    match func {
+        "map" | "by_row" | "by_column" => Some(1),
+        "reduce" | "scan" => Some(2),
+        _ => None,
+    }
+}
+
 fn call_usage(binding: &Binding) -> String {
     let mut usage = binding.name.clone();
     for param in &binding.params {
@@ -1265,6 +1274,15 @@ impl Scope<'_> {
                 seed,
             } => {
                 self.resolve_call(func, args.len(), uses, errors);
+                if let Some(wanted) = lambda_parameters(&func.name)
+                    && let Some((first, rest)) = args.split_first()
+                {
+                    self.resolve_function(&func.name, wanted, first, uses, errors);
+                    for arg in rest {
+                        self.resolve_expr(arg, delayed, uses, errors);
+                    }
+                    return;
+                }
                 let shifts = matches!(
                     func.name.as_str(),
                     "lag" | "tail" | "init" | "first" | "last"
@@ -1313,6 +1331,14 @@ impl Scope<'_> {
                 expr.pos,
                 format!("`{word}` is a setting of a style, not a value a formula can use"),
             )),
+            ExprKind::Lambda { .. } => {
+                errors.push(Diagnostic::error(
+                    expr.pos,
+                    "a lambda is given to a function that takes one: `map`, `by_row`, \
+                     `by_column`, `reduce` or `scan`",
+                ));
+                return;
+            }
             // A record in a formula is a table, built from its fields as its columns.
             ExprKind::Record(fields) => {
                 if fields.is_empty() {
@@ -1342,6 +1368,103 @@ impl Scope<'_> {
         }
         for child in expr.children() {
             self.resolve_expr(child, delayed, uses, errors);
+        }
+    }
+
+    /// Checks the function given first to `map` and the others: a lambda with as many
+    /// parameters as the function gives it, each a name of its own, or a `Lambda` by its name.
+    fn resolve_function(
+        &self,
+        func: &str,
+        wanted: usize,
+        given: &Expr,
+        uses: &mut Vec<Use>,
+        errors: &mut Vec<Diagnostic>,
+    ) {
+        let gives = if wanted == 1 {
+            "one value at a time, so the lambda takes one parameter, as in `\\x -> …`"
+        } else {
+            "the value so far and the next, so the lambda takes two, as in `\\total x -> …`"
+        };
+        match &given.kind {
+            ExprKind::Lambda { params, body } => {
+                if params.len() != wanted {
+                    errors.push(Diagnostic::error(
+                        given.pos,
+                        format!("`{func}` gives its lambda {gives}"),
+                    ));
+                }
+                let mut inner: Vec<String> = self.params.to_vec();
+                for param in params {
+                    errors.extend(name_error(&param.name, param.pos));
+                    let lower = param.name.to_ascii_lowercase();
+                    let taken = self
+                        .symbols
+                        .keys()
+                        .chain(&inner)
+                        .find(|name| name.to_ascii_lowercase() == lower);
+                    if let Some(taken) = taken {
+                        errors.push(Diagnostic::error(
+                            param.pos,
+                            format!(
+                                "`{taken}` is already a name here, and a lambda's parameter hides \
+                                 none; give it a name of its own"
+                            ),
+                        ));
+                    }
+                    inner.push(param.name.clone());
+                }
+                let scope = Scope {
+                    symbols: self.symbols,
+                    sizes: self.sizes,
+                    bindings: self.bindings,
+                    params: &inner,
+                };
+                scope.resolve_expr(body, false, uses, errors);
+            }
+            ExprKind::Name(name) if !self.params.contains(name) => match self.symbols.get(name) {
+                Some(Symbol::Binding(b)) if self.bindings[*b].role == Role::Lambda => {
+                    uses.push(Use {
+                        binding: *b,
+                        delayed: false,
+                    });
+                    let binding = &self.bindings[*b];
+                    if binding.params.len() != wanted {
+                        errors.push(Diagnostic::error(
+                            given.pos,
+                            format!(
+                                "`{func}` gives its function {gives}, and `{}` takes {}",
+                                call_usage(binding),
+                                binding.params.len()
+                            ),
+                        ));
+                    }
+                }
+                _ => errors.push(Diagnostic::error(
+                    given.pos,
+                    format!(
+                        "`{func}` takes a function first: a lambda in parentheses, as in \
+                         `({})`, or a `Lambda` by its name",
+                        if wanted == 1 {
+                            "\\x -> …"
+                        } else {
+                            "\\total x -> …"
+                        }
+                    ),
+                )),
+            },
+            _ => errors.push(Diagnostic::error(
+                given.pos,
+                format!(
+                    "`{func}` takes a function first: a lambda in parentheses, as in `({})`, or \
+                     a `Lambda` by its name",
+                    if wanted == 1 {
+                        "\\x -> …"
+                    } else {
+                        "\\total x -> …"
+                    }
+                ),
+            )),
         }
     }
 
