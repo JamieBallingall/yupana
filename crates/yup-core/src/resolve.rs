@@ -1291,7 +1291,6 @@ impl Scope<'_> {
                         "`csv` reads a file into a value, as the whole of its definition: \
                          `history = csv \"history.csv\"`, with `Value` in its signature",
                     )),
-                    ("column", [name, table]) => errors.extend(self.column_error(name, table)),
                     // What `lag 1 x seed first` lags is read only at earlier positions.
                     ("lag", [steps, lagged]) if seed.is_some() => {
                         self.resolve_expr(steps, delayed, uses, errors);
@@ -1313,6 +1312,7 @@ impl Scope<'_> {
                 expr.pos,
                 format!("`{word}` is a setting of a style, not a value a formula can use"),
             )),
+            ExprKind::Column { table, name } => errors.extend(self.column_error(table, name)),
             ExprKind::Record(_) | ExprKind::Update { .. } => errors.push(Diagnostic::error(
                 expr.pos,
                 "a record belongs to a style, a sheet or the workbook, not to a formula",
@@ -1324,24 +1324,21 @@ impl Scope<'_> {
         }
     }
 
-    /// Checks `column "name" table`: a name in quotes, of a column the table has.
-    fn column_error(&self, name: &Expr, table: &Expr) -> Option<Diagnostic> {
-        let ExprKind::Str(column) = &name.kind else {
-            return Some(Diagnostic::error(
-                name.pos,
-                "`column` takes the column's name in double quotes: `column \"revenue\" history`",
-            ));
-        };
+    /// Checks `table.name`: a table read from a file, by its name, and a column it has.
+    fn column_error(&self, table: &Expr, name: &Ident) -> Option<Diagnostic> {
         let binding = match &table.kind {
             ExprKind::Name(table_name) if !self.params.contains(table_name) => {
                 match self.symbols.get(table_name) {
                     Some(Symbol::Binding(b)) if self.table_bindings.contains(b) => *b,
+                    // An unknown name is reported as one.
+                    None => return None,
                     _ => {
                         return Some(Diagnostic::error(
-                            table.pos,
+                            name.pos,
                             format!(
-                                "`column` takes a table, a value defined by `csv`, and \
-                                 `{table_name}` is not one"
+                                "`{table_name}` is not a table, a value defined by `csv`, so it \
+                                 has no column `{}`",
+                                name.name
                             ),
                         ));
                     }
@@ -1349,19 +1346,21 @@ impl Scope<'_> {
             }
             _ => {
                 return Some(Diagnostic::error(
-                    table.pos,
-                    "`column` takes a table by its name: a value defined by `csv`",
+                    name.pos,
+                    "a column is taken from a table by its name, a value defined by `csv`, as \
+                     in `history.units`",
                 ));
             }
         };
         // A table whose file could not be read has been reported already.
         let table = self.tables.get(&binding)?;
-        (!table.header.contains(column)).then(|| {
+        (!table.header.contains(&name.name)).then(|| {
             Diagnostic::error(
                 name.pos,
                 format!(
-                    "the table `{}` has no column `{column}`; its columns are {}",
+                    "the table `{}` has no column `{}`; its columns are {}",
                     self.bindings[binding].name,
+                    name.name,
                     table.header.join(", ")
                 ),
             )
@@ -1413,6 +1412,12 @@ impl Scope<'_> {
                                 "unknown function `{}`; it is written `{spelling}`",
                                 func.name
                             )
+                        }
+                        // 0.2's way to take a column.
+                        None if func.name == "column" => {
+                            "`column` is gone; a column is written `table.name`, as in \
+                             `history.units`"
+                                .to_string()
                         }
                         None => format!("unknown function `{}`", func.name),
                     };

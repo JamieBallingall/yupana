@@ -23,7 +23,6 @@ pub enum Builtin {
     Average,
     Ceiling,
     CeilingTo,
-    Column,
     CountIf,
     Csv,
     DateOf,
@@ -242,15 +241,6 @@ const TABLE: &[Entry] = &[
         "ceiling_to multiple x",
         Some("_xlfn.CEILING.MATH"),
     ),
-    Entry {
-        name: "column",
-        builtin: Builtin::Column,
-        usage: "column \"name\" table",
-        takes: &[TEXT, ANY],
-        kind: Kind::Own,
-        gives: Gives::Own,
-        app: None,
-    },
     // A date is a number, the serial day of the 1900 date system the workbook uses. The year,
     // month and day may run over: day 0 is the last day of the month before (ECMA-376 Part 1
     // §18.17.7.74).

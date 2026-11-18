@@ -125,7 +125,7 @@ are two headers that become the same name: rename them in the file.
 A column holds one type: numbers, text or logicals, with blank fields allowed in any of them. A
 column that holds two is an error at its first field of the second.
 
-`column "units" history` is one column of a table.
+`history.units` is one column of a table, written with no space around the `.`.
 
 ## Lambdas
 
@@ -253,7 +253,7 @@ either does, as in arithmetic.
 | `year_of x`, `month_of x` | the year or month of a date | `YEAR(x)`, `MONTH(x)` |
 | `end_of_month k x` | the last day of the month k months after x | `DATE(YEAR(x),MONTH(x)+k+1,0)` |
 | `lookup k ks vs` | the value beside each key, shaped as `k` | `XLOOKUP(k,ks,vs)` |
-| `column "c" t` | the column called `c` of the table `t` | `INDEX(t,0,j)` |
+| `t.c` | the column called `c` of the table `t` | `INDEX(t,0,j)` |
 | `na` | the error `#N/A` | `NA()` |
 | `csv "file.csv"` | a table read from a file, as the whole of a value's definition | its cells |
 

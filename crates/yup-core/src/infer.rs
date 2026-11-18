@@ -333,6 +333,13 @@ impl Infer<'_> {
             | ExprKind::Constructor(_)
             | ExprKind::Record(_)
             | ExprKind::Update { .. } => Ok(Shape::scalar()),
+            ExprKind::Column { table, .. } => {
+                let table = self.shape(table)?;
+                Ok(Shape {
+                    rows: table.rows,
+                    columns: Extent::one(),
+                })
+            }
             ExprKind::Name(name)
                 if self
                     .params
@@ -637,13 +644,6 @@ impl Infer<'_> {
                 Ok(Shape {
                     rows: Extent::of(SizeExpr::constant(count(table.rows.len()))),
                     columns: Extent::of(SizeExpr::constant(count(table.header.len()))),
-                })
-            }
-            Builtin::Column => {
-                let table = self.shape(&args[1])?;
-                Ok(Shape {
-                    rows: table.rows,
-                    columns: Extent::one(),
                 })
             }
             Builtin::Transpose => {
@@ -1148,6 +1148,7 @@ impl Infer<'_> {
             | ExprKind::Constructor(_)
             | ExprKind::Record(_)
             | ExprKind::Update { .. } => Ty::Any,
+            ExprKind::Column { table, name } => self.column_type(table, name),
             ExprKind::Name(name) => match params.get(name) {
                 Some(ty) => Ty::Known(*ty),
                 None => match self.model.symbols.get(name) {
@@ -1214,7 +1215,6 @@ impl Infer<'_> {
                             types.iter().fold(Ty::Never, |ty, &next| join(ty, next))
                         }
                         (Gives::Own, Builtin::Lag) => join(types[1], seed),
-                        (Gives::Own, Builtin::Column) => self.column_type(&args[0], &args[1]),
                         (Gives::Own, Builtin::Csv) => Ty::Any,
                         (Gives::Own, Builtin::Na) => Ty::Never,
                         (Gives::Own, _) => {
@@ -1259,10 +1259,11 @@ impl Infer<'_> {
     }
 
     /// What the cells of a table's column hold, where they all hold the same.
-    fn column_type(&self, name: &Expr, table: &Expr) -> Ty {
-        let (ExprKind::Str(name), ExprKind::Name(table)) = (&name.kind, &table.kind) else {
+    fn column_type(&self, table: &Expr, name: &Ident) -> Ty {
+        let ExprKind::Name(table) = &table.kind else {
             return Ty::Any;
         };
+        let name = &name.name;
         let Some(Symbol::Binding(binding)) = self.model.symbols.get(table) else {
             return Ty::Any;
         };

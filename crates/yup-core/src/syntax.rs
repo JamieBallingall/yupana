@@ -437,6 +437,11 @@ pub enum ExprKind {
         first: Box<Expr>,
         last: Box<Expr>,
     },
+    /// `table.name`: one column of a table, written with no space around the `.`.
+    Column {
+        table: Box<Expr>,
+        name: Ident,
+    },
     /// `{ name = value, … }`.
     Record(Vec<Field>),
     /// `base { name = value, … }`: a record built on another.
@@ -457,7 +462,7 @@ impl Expr {
             | ExprKind::Name(_)
             | ExprKind::Constructor(_) => Vec::new(),
             ExprKind::Apply { args, seed, .. } => args.iter().chain(seed.as_deref()).collect(),
-            ExprKind::Neg(operand) => vec![operand],
+            ExprKind::Neg(operand) | ExprKind::Column { table: operand, .. } => vec![operand],
             ExprKind::Binary { left, right, .. } => vec![left, right],
             ExprKind::If { cond, then, other } => vec![cond, then, other],
             ExprKind::List(rows) => rows.iter().flatten().collect(),

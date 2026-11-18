@@ -247,7 +247,8 @@ fn precedence(expr: &Expr) -> u8 {
         | ExprKind::Constructor(_)
         | ExprKind::List(_)
         | ExprKind::Record(_)
-        | ExprKind::Update { .. } => ATOM,
+        | ExprKind::Update { .. }
+        | ExprKind::Column { .. } => ATOM,
     }
 }
 
@@ -350,6 +351,19 @@ fn write_expr(out: &mut String, expr: &Expr, context: u8) {
             write_expr(out, first, OR);
             out.push_str(" .. ");
             write_expr(out, last, OR);
+        }
+        ExprKind::Column { table, name } => {
+            // Only a name or another column goes before the `.` without parentheses.
+            let bare = matches!(table.kind, ExprKind::Name(_) | ExprKind::Column { .. });
+            if bare {
+                write_expr(out, table, ATOM);
+            } else {
+                out.push('(');
+                write_expr(out, table, LOOSE);
+                out.push(')');
+            }
+            out.push('.');
+            out.push_str(&name.name);
         }
         ExprKind::Record(fields) => write_fields(out, fields),
         ExprKind::Update { base, fields } => {

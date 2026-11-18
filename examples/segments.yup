@@ -56,12 +56,12 @@ year = 1 .. horizon
 
 // A formula of text: the segments' names, one to a row, beside their revenue.
 names : Formula Text style label year_label down
-names = column "segment" segments
+names = segments.segment
 
 // One row per segment, one column per year: a column of segments times a row of years gives a
 // grid.
 revenue : Formula Number style money names right 2
-revenue = column "base" segments * (1 + column "growth" segments) ^ year
+revenue = segments.base * (1 + segments.growth) ^ year
 
 // The rows above have a fixed height, so these rows can go below them.
 total_label : Label style heading names down 2

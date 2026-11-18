@@ -52,6 +52,8 @@ pub enum Token {
     Slash,
     Caret,
     DotDot,
+    /// The `.` of `table.name`, read only with no space on either side.
+    Dot,
     EqEq,
     NotEq,
     Less,
@@ -93,6 +95,7 @@ impl Token {
             Token::Slash => "/",
             Token::Caret => "^",
             Token::DotDot => "..",
+            Token::Dot => ".",
             Token::EqEq => "==",
             Token::NotEq => "/=",
             Token::Less => "<",
@@ -458,6 +461,7 @@ impl Lexer {
     }
 
     fn symbol(&mut self, c: char, pos: Pos) -> Result<(), Diagnostic> {
+        let before = self.next.checked_sub(1).map(|i| self.chars[i]);
         self.bump();
         let next = self.peek();
         let mut two = |token| {
@@ -502,10 +506,18 @@ impl Lexer {
             '<' => Token::Less,
             '>' if next == Some('=') => two(Token::GreaterEq),
             '>' => Token::Greater,
+            // A number keeps its own `.`, so one here follows something else: a name or a `)`
+            // just before it, and a name just after, make it a column.
+            '.' if before.is_some_and(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | ')'))
+                && next.is_some_and(|c| c.is_ascii_lowercase()) =>
+            {
+                Token::Dot
+            }
             '.' => {
                 return Err(Diagnostic::error(
                     pos,
-                    "a `.` on its own; a range of whole numbers is written `a .. b`",
+                    "a `.` on its own; a column is written `table.name`, with no spaces, and a \
+                     range of whole numbers `a .. b`",
                 ));
             }
             '!' => {

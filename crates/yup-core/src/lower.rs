@@ -819,6 +819,28 @@ impl Lowerer<'_> {
                     call(&func.name, &args)
                 }
             },
+            ExprKind::Column { table, name } => {
+                let ExprKind::Name(table_name) = &table.kind else {
+                    unreachable!("Resolve checks that a column's table is a name");
+                };
+                let Some(&Symbol::Binding(binding)) = self.model.symbols.get(table_name) else {
+                    unreachable!("Resolve checks the table");
+                };
+                let index = self.model.tables[&binding]
+                    .header
+                    .iter()
+                    .position(|column| *column == name.name)
+                    .expect("Resolve checks the column's name");
+                // INDEX with row 0 gives the whole column.
+                call(
+                    "INDEX",
+                    &[
+                        self.formula(table, scope)?,
+                        Formula::atom("0"),
+                        Formula::atom((index + 1).to_string()),
+                    ],
+                )
+            }
             ExprKind::Text(_)
             | ExprKind::Constructor(_)
             | ExprKind::Record(_)
@@ -973,29 +995,6 @@ impl Lowerer<'_> {
                 ExprKind::Range { first, last } => self.range(first, last, Axis::Down, scope)?,
                 _ => call("TRANSPOSE", &[arg(0)?]),
             },
-            Builtin::Column => {
-                let (ExprKind::Str(name), ExprKind::Name(table)) = (&args[0].kind, &args[1].kind)
-                else {
-                    unreachable!("Resolve checks the column's name and its table");
-                };
-                let Some(&Symbol::Binding(binding)) = self.model.symbols.get(table) else {
-                    unreachable!("Resolve checks the table");
-                };
-                let index = self.model.tables[&binding]
-                    .header
-                    .iter()
-                    .position(|column| column == name)
-                    .expect("Resolve checks the column's name");
-                // INDEX with row 0 gives the whole column.
-                call(
-                    "INDEX",
-                    &[
-                        arg(1)?,
-                        Formula::atom("0"),
-                        Formula::atom((index + 1).to_string()),
-                    ],
-                )
-            }
             // The nearest multiple, a half away from zero, whatever the signs of x and m:
             // SIGN(x)*FLOOR.MATH(ABS(x)+ABS(m)/2,ABS(m)). MROUND would say the same of single
             // values, but gives #VALUE! for a range where it takes a number.

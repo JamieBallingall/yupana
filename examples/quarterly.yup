@@ -326,19 +326,19 @@ quarter_actual_label : Label style label historicals_title down 2
 quarter_actual_label = "Quarter"
 
 quarter_actual : Formula Text style header quarter_actual_label right 2
-quarter_actual = transpose (column "quarter" history)
+quarter_actual = transpose history.quarter
 
 number_actual_label : Label style item quarter_actual_label down
 number_actual_label = "Quarter number"
 
 number_actual : Formula Number style count number_actual_label right 2
-number_actual = transpose (column "number" history)
+number_actual = transpose history.number
 
 days_actual_label : Label style item number_actual_label down
 days_actual_label = "Days in the quarter"
 
 days_actual : Formula Number style count days_actual_label right 2
-days_actual = transpose (column "days" history)
+days_actual = transpose history.days
 
 income_actual_section : Label style section days_actual_label down 2
 income_actual_section = "Income statement"
@@ -347,13 +347,13 @@ revenue_actual_label : Label style item income_actual_section down
 revenue_actual_label = "Revenue"
 
 revenue_actual : Formula Number style money revenue_actual_label right 2
-revenue_actual = transpose (column "revenue" history)
+revenue_actual = transpose history.revenue
 
 cost_of_sales_actual_label : Label style item revenue_actual_label down
 cost_of_sales_actual_label = "Cost of sales"
 
 cost_of_sales_actual : Formula Number style money cost_of_sales_actual_label right 2
-cost_of_sales_actual = transpose (column "cost_of_sales" history)
+cost_of_sales_actual = transpose history.cost_of_sales
 
 gross_profit_actual_label : Label style item cost_of_sales_actual_label down
 gross_profit_actual_label = "Gross profit"
@@ -365,7 +365,7 @@ operating_expenses_actual_label : Label style item gross_profit_actual_label dow
 operating_expenses_actual_label = "Operating expenses"
 
 operating_expenses_actual : Formula Number style money operating_expenses_actual_label right 2
-operating_expenses_actual = transpose (column "operating_expenses" history)
+operating_expenses_actual = transpose history.operating_expenses
 
 ebitda_actual_label : Label style item operating_expenses_actual_label down
 ebitda_actual_label = "EBITDA"
@@ -377,7 +377,7 @@ depreciation_actual_label : Label style item ebitda_actual_label down
 depreciation_actual_label = "Depreciation"
 
 depreciation_actual : Formula Number style money depreciation_actual_label right 2
-depreciation_actual = transpose (column "depreciation" history)
+depreciation_actual = transpose history.depreciation
 
 operating_profit_actual_label : Label style item depreciation_actual_label down
 operating_profit_actual_label = "Operating profit"
@@ -389,7 +389,7 @@ interest_actual_label : Label style item operating_profit_actual_label down
 interest_actual_label = "Interest"
 
 interest_actual : Formula Number style money interest_actual_label right 2
-interest_actual = transpose (column "interest" history)
+interest_actual = transpose history.interest
 
 profit_before_tax_actual_label : Label style item interest_actual_label down
 profit_before_tax_actual_label = "Profit before tax"
@@ -401,7 +401,7 @@ tax_actual_label : Label style item profit_before_tax_actual_label down
 tax_actual_label = "Tax"
 
 tax_actual : Formula Number style money tax_actual_label right 2
-tax_actual = transpose (column "tax" history)
+tax_actual = transpose history.tax
 
 net_income_actual_label : Label style item tax_actual_label down
 net_income_actual_label = "Net income"
@@ -416,25 +416,25 @@ cash_actual_label : Label style item balance_actual_section down
 cash_actual_label = "Cash"
 
 cash_actual : Formula Number style money cash_actual_label right 2
-cash_actual = transpose (column "cash" history)
+cash_actual = transpose history.cash
 
 receivables_actual_label : Label style item cash_actual_label down
 receivables_actual_label = "Receivables"
 
 receivables_actual : Formula Number style money receivables_actual_label right 2
-receivables_actual = transpose (column "receivables" history)
+receivables_actual = transpose history.receivables
 
 inventory_actual_label : Label style item receivables_actual_label down
 inventory_actual_label = "Inventory"
 
 inventory_actual : Formula Number style money inventory_actual_label right 2
-inventory_actual = transpose (column "inventory" history)
+inventory_actual = transpose history.inventory
 
 ppe_actual_label : Label style item inventory_actual_label down
 ppe_actual_label = "PP&E"
 
 ppe_actual : Formula Number style money ppe_actual_label right 2
-ppe_actual = transpose (column "ppe" history)
+ppe_actual = transpose history.ppe
 
 total_assets_actual_label : Label style item ppe_actual_label down
 total_assets_actual_label = "Total assets"
@@ -446,37 +446,37 @@ payables_actual_label : Label style item total_assets_actual_label down 2
 payables_actual_label = "Payables"
 
 payables_actual : Formula Number style money payables_actual_label right 2
-payables_actual = transpose (column "payables" history)
+payables_actual = transpose history.payables
 
 revolver_actual_label : Label style item payables_actual_label down
 revolver_actual_label = "Revolver"
 
 revolver_actual : Formula Number style money revolver_actual_label right 2
-revolver_actual = transpose (column "revolver" history)
+revolver_actual = transpose history.revolver
 
 bond_a_actual_label : Label style item revolver_actual_label down
 bond_a_actual_label = "Bond A"
 
 bond_a_actual : Formula Number style money bond_a_actual_label right 2
-bond_a_actual = transpose (column "bond_a" history)
+bond_a_actual = transpose history.bond_a
 
 bond_b_actual_label : Label style item bond_a_actual_label down
 bond_b_actual_label = "Bond B"
 
 bond_b_actual : Formula Number style money bond_b_actual_label right 2
-bond_b_actual = transpose (column "bond_b" history)
+bond_b_actual = transpose history.bond_b
 
 term_loan_actual_label : Label style item bond_b_actual_label down
 term_loan_actual_label = "Term loan"
 
 term_loan_actual : Formula Number style money term_loan_actual_label right 2
-term_loan_actual = transpose (column "term_loan" history)
+term_loan_actual = transpose history.term_loan
 
 equity_actual_label : Label style item term_loan_actual_label down
 equity_actual_label = "Equity"
 
 equity_actual : Formula Number style money equity_actual_label right 2
-equity_actual = transpose (column "equity" history)
+equity_actual = transpose history.equity
 
 total_liabilities_actual_label : Label style item equity_actual_label down
 total_liabilities_actual_label = "Total liabilities and equity"
@@ -498,19 +498,19 @@ capex_actual_label : Label style item cash_flow_actual_section down
 capex_actual_label = "Capital expenditure"
 
 capex_actual : Formula Number style money capex_actual_label right 2
-capex_actual = transpose (column "capex" history)
+capex_actual = transpose history.capex
 
 dividends_actual_label : Label style item capex_actual_label down
 dividends_actual_label = "Dividends"
 
 dividends_actual : Formula Number style money dividends_actual_label right 2
-dividends_actual = transpose (column "dividends" history)
+dividends_actual = transpose history.dividends
 
 buybacks_actual_label : Label style item dividends_actual_label down
 buybacks_actual_label = "Share buybacks"
 
 buybacks_actual : Formula Number style money buybacks_actual_label right 2
-buybacks_actual = transpose (column "buybacks" history)
+buybacks_actual = transpose history.buybacks
 
 economy_actual_section : Label style section buybacks_actual_label down 2
 economy_actual_section = "Economy"
@@ -519,13 +519,13 @@ gdp_growth_actual_label : Label style item economy_actual_section down
 gdp_growth_actual_label = "GDP growth, year on year"
 
 gdp_growth_actual : Formula Number style percent gdp_growth_actual_label right 2
-gdp_growth_actual = transpose (column "gdp_growth" history)
+gdp_growth_actual = transpose history.gdp_growth
 
 price_change_actual_label : Label style item gdp_growth_actual_label down
 price_change_actual_label = "Own price change, year on year"
 
 price_change_actual : Formula Number style percent price_change_actual_label right 2
-price_change_actual = transpose (column "price_change" history)
+price_change_actual = transpose history.price_change
 
 // Analysis: the history spread out, and where the forecast starts.
 
@@ -746,31 +746,31 @@ quarter_label : Label style label forecast_title down 2
 quarter_label = "Quarter"
 
 quarter : Formula Text style header quarter_label right 2
-quarter = transpose (column "quarter" quarters)
+quarter = transpose quarters.quarter
 
 year_label : Label style item quarter_label down
 year_label = "Year of the forecast"
 
 year : Formula Number style count year_label right 2
-year = transpose (column "year" quarters)
+year = transpose quarters.year
 
 season_label : Label style item year_label down
 season_label = "Quarter of the year"
 
 season : Formula Number style count season_label right 2
-season = transpose (column "season" quarters)
+season = transpose quarters.season
 
 days_label : Label style item season_label down
 days_label = "Days in the quarter"
 
 days : Formula Number style count days_label right 2
-days = transpose (column "days" quarters)
+days = transpose quarters.days
 
 base_rate_label : Label style item days_label down
 base_rate_label = "Base rate"
 
 base_rate : Formula Number style percent base_rate_label right 2
-base_rate = transpose (column "base_rate" quarters)
+base_rate = transpose quarters.base_rate
 
 // Revenue grows by the year: each year's growth from the history's compound growth and the
 // economy, and the growth since the last reported year carried from one year to the next.
@@ -781,31 +781,31 @@ calendar_year_label : Label style item growth_section down
 calendar_year_label = "Year"
 
 calendar_year : Formula Number style header calendar_year_label right 2
-calendar_year = transpose (column "calendar_year" years)
+calendar_year = transpose years.calendar_year
 
 year_number_label : Label style item calendar_year_label down
 year_number_label = "Year of the forecast"
 
 year_number : Formula Number style count year_number_label right 2
-year_number = transpose (column "year" years)
+year_number = transpose years.year
 
 gdp_effect_label : Label style item year_number_label down
 gdp_effect_label = "GDP effect"
 
 gdp_effect : Formula Number style percent gdp_effect_label right 2
-gdp_effect = gdp_beta * (transpose (column "gdp_growth" years) - gdp_average)
+gdp_effect = gdp_beta * (transpose years.gdp_growth - gdp_average)
 
 price_effect_label : Label style item gdp_effect_label down
 price_effect_label = "Price effect"
 
 price_effect : Formula Number style percent price_effect_label right 2
-price_effect = price_beta * (transpose (column "price_change" years) - price_average)
+price_effect = price_beta * (transpose years.price_change - price_average)
 
 growth_label : Label style item price_effect_label down
 growth_label = "Growth on a year earlier"
 
 growth : Formula Number style percent growth_label right 2
-growth = cagr + gdp_effect + price_effect + transpose (column "growth_adjustment" years)
+growth = cagr + gdp_effect + price_effect + transpose years.growth_adjustment
 
 growth_index_label : Label style item growth_label down
 growth_index_label = "Revenue, times the last reported year's"

@@ -47,14 +47,14 @@ last_year_label : Label style label horizon_label down
 last_year_label = "Last year of history"
 
 last_year : Formula Number style year_style last_year_label right 2
-last_year = maximum (column "year" history)
+last_year = maximum history.year
 
 // A lookup gives one value for each key: here, one key, so one value.
 last_units_label : Label style label last_year_label down
 last_units_label = "Units sold in the last year"
 
 last_units : Formula Number style units_style last_units_label right 2
-last_units = lookup last_year (column "year" history) (column "units" history)
+last_units = lookup last_year history.year history.units
 
 forecast_heading : Label style heading last_units_label down 2
 forecast_heading = "Forecast"

@@ -924,7 +924,7 @@ impl Parser {
                         },
                     });
                 }
-                return Ok(base);
+                return self.columns(base);
             }
             Token::LParen => {
                 self.advance();
@@ -937,7 +937,7 @@ impl Parser {
                     ));
                 }
                 self.expect(&Token::RParen, "`)`")?;
-                return Ok(inner);
+                return self.columns(inner);
             }
             Token::LBracket => return self.list(),
             Token::LBrace => {
@@ -951,6 +951,29 @@ impl Parser {
         };
         self.advance();
         Ok(Expr { pos, kind })
+    }
+
+    /// `base.name`, and `base.name.other`, after an atom.
+    fn columns(&mut self, mut base: Expr) -> Parsed<Expr> {
+        while *self.peek() == Token::Dot {
+            let pos = self.advance().pos;
+            // A column's name is a field's, so a keyword such as `size` is one too.
+            let Token::Name(column) = self.peek().clone() else {
+                return Err(self.unexpected("a column's name"));
+            };
+            let name = Ident {
+                name: column,
+                pos: self.advance().pos,
+            };
+            base = Expr {
+                pos,
+                kind: ExprKind::Column {
+                    table: Box::new(base),
+                    name,
+                },
+            };
+        }
+        Ok(base)
     }
 
     /// The fields of a record, `{ name = value, … }`, from its opening brace.
@@ -1242,6 +1265,12 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn a_column_follows_a_name_or_brackets() {
+        let expr = definition("f t.size (g t).units");
+        assert_eq!(crate::printer::expression(&expr), "f t.size (g t).units");
     }
 
     #[test]

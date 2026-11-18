@@ -56,7 +56,7 @@ weeks = csv "stock.csv"
 // what went out: a value carried from one row to the next, which the workbook works out with a
 // scan down the rows.
 stock : Formula Number style units stock_header down
-stock = lag 1 stock seed opening + column "delivered" weeks - column "sold" weeks
+stock = lag 1 stock seed opening + weeks.delivered - weeks.sold
 
 // A formula of logicals: whether each week ends below the threshold.
 reorder : Formula Logical reorder_header down

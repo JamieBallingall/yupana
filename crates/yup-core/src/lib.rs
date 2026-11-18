@@ -533,7 +533,7 @@ closing = opening - paid
 sales : Value at main D2
 sales = csv \"sales.csv\"
 latest : Formula sales down 3
-latest = lookup (maximum (column \"year\" sales)) (column \"year\" sales) (column \"units\" sales)
+latest = lookup (maximum sales.year) sales.year sales.units
 ";
 
     fn sales_inputs(csv: &str) -> Inputs {
@@ -586,6 +586,52 @@ latest = lookup (maximum (column \"year\" sales)) (column \"year\" sales) (colum
         assert_eq!(
             short[0].to_string(),
             "sales.csv:2:1: error: this row has 1 field, and the header has 2 fields"
+        );
+        let inputs = sales_inputs("year,units\n2024,10\n");
+        for (definition, message) in [
+            (
+                "sales.month",
+                "8:16: error: the table `sales` has no column `month`; its columns are year, units",
+            ),
+            (
+                "latest.year",
+                "8:17: error: `latest` is not a table, a value defined by `csv`, so it has no \
+                 column `year`",
+            ),
+            (
+                "(sales + 1).year",
+                "8:22: error: a column is taken from a table by its name, a value defined by \
+                 `csv`, as in `history.units`",
+            ),
+            (
+                "column \"year\" sales",
+                "8:10: error: `column` is gone; a column is written `table.name`, as in \
+                 `history.units`",
+            ),
+        ] {
+            let source = SALES.replace(
+                "lookup (maximum sales.year) sales.year sales.units",
+                definition,
+            );
+            // `latest.year` also makes `latest` depend on itself, which is reported too.
+            let errors: Vec<String> = show(&file(&source), Step::Resolve, &inputs)
+                .expect_err(definition)
+                .iter()
+                .map(ToString::to_string)
+                .collect();
+            assert!(errors.iter().any(|error| error == message), "{errors:?}");
+        }
+    }
+
+    #[test]
+    fn a_column_is_written_with_a_dot_and_no_spaces() {
+        let source = "a : Formula at main B2\na = 1 . 5\n";
+        assert_eq!(
+            errors(source, Step::Resolve),
+            [
+                "6:7: error: a `.` on its own; a column is written `table.name`, with no spaces, and \
+              a range of whole numbers `a .. b`"
+            ]
         );
     }
 
