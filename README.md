@@ -711,6 +711,13 @@ sales = csv "sales.csv"
   `2025` is `col_2025`. A column's name follows the rules for a record's field, not those for a
   defined name, since it is never written into the workbook: `sum` and `size` are columns like
   any other.
+- **A column read from a file has one type** (decided 2026-11-17, question T4): numbers, text
+  or logicals, with blank cells allowed in any of them. A column that mixes them is refused at
+  its first cell of another type, rather than typed `Any` without a word as in 0.2. A column of
+  blanks only takes the type that the table's signature gives it, and is refused if it has none.
+- A column worked out by a formula is typed as in 0.2. A blank written as `""` in a column of
+  numbers, `if c then x else ""`, is accepted where the signature says `Number`, as 0.2 accepts
+  it, because Infer checks a type only where it knows one.
 - The file is refused, at the header's line and column, where a header holds a letter outside
   ASCII, has nothing that would be left, or gives the same name as another header, as
   `Unit Price` and `unit-price` do. Its writer renames the header: a transliteration table is
@@ -839,8 +846,9 @@ totals = map (\r -> sum_if (sales.region == r) sales.units) regions
 - **T3. Declaring the new sizes.** *Settled 2026-11-17: declared, as `Size Maximum n` and
   `Size Same n`, wherever a binding's cells have one, as above. Inferred names would have kept
   the file short, but left errors naming sizes that the file never mentions.*
-- **T4. Columns of different types.** Whether a table may have a column whose type is not one
-  type, such as `""` and numbers, and what its type is then written as.
+- **T4. Columns of different types.** *Settled 2026-11-17: a column read from a file has one
+  type, and a mixed one is refused, as under Tables. An `Any` type would have meant conversions
+  in the language to clean up data that its writer can keep clean.*
 - **T5. `stack` of two tables with the same columns in another order:** refused, or matched by
   name.
 - **T6. Summarising over the keys that occur.** *Settled 2026-11-17: with lambdas, above, as
