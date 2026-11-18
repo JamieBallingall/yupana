@@ -1,15 +1,18 @@
-# yupana
+# yupana: the design record
+
+Why `.yup` is the way it is: the scope of stage 1, what was decided and when, the range model,
+the pipeline, the options set aside, and the questions still open. [language.md](language.md)
+describes the language as the code implements it, and the [README](../README.md) says how to
+use it.
 
 The project is **yupana**, and so is the repository: it replaced an earlier yupana, now retired,
 on 2026-11-17. The names of the crates and the command are not decided.
 
-> **Seed capsule,** drafted 2026-10-14. This is a design record, not documentation of code. A
-> first version of the whole pipeline, `.yup` 0.1, was built on 2026-10-14 to try the design end to
-> end, 0.2, which settles much of its syntax, on 2026-11-03, and 0.3, which adds tables and
-> lambdas inside expressions, on 2026-11-18. The syntax is still provisional:
-> [docs/language.md](docs/language.md) describes it, and [Built for 0.1](#built-for-01),
-> [Built for 0.2](#built-for-02) and [Built for 0.3](#built-for-03-tables-and-lambdas) list
-> what was decided on the way.
+> **Seed capsule,** drafted 2026-10-14. A first version of the whole pipeline, `.yup` 0.1, was
+> built on 2026-10-14 to try the design end to end, 0.2, which settles much of its syntax, on
+> 2026-11-03, and 0.3, which adds tables and lambdas inside expressions, on 2026-11-18. The
+> syntax is still provisional: [Built for 0.1](#built-for-01), [Built for 0.2](#built-for-02)
+> and [Built for 0.3](#built-for-03-tables-and-lambdas) list what was decided on the way.
 
 ## What this is
 
@@ -40,46 +43,6 @@ tool runs natively as a command and in the browser as WebAssembly.
 LLM that reads the workbook, decides what matters (with a person where needed) and writes the
 `.yup` from scratch. That happens outside this repository. A lossy automatic conversion would drop
 things silently or bury the user in warnings.
-
-## Trying it
-
-The quickest way needs nothing installed: the page at
-[jamieballingall.github.io/yupana](https://jamieballingall.github.io/yupana/) is the whole tool,
-running in the browser, and works offline once saved. Each
-[release](https://github.com/JamieBallingall/yupana/releases/latest) has the page, `yup.html`,
-and the tool as one JavaScript file, `yup.mjs`, with its types, `yup.d.ts`, beside the source.
-The latest of each is always at the same address, such as
-`https://github.com/JamieBallingall/yupana/releases/latest/download/yup.mjs`.
-
-From the source, with Rust installed:
-
-    cargo run -p yup-cli -- build examples/forecast.yup -o target/forecast.xlsx
-    cargo run -p yup-cli -- check examples/segments.yup
-    cargo run -p yup-cli -- show place examples/segments.yup
-
-`yup build` writes the workbook, by default beside the `.yup` file. `yup show <step>` prints what
-any step makes of a file: the steps up to Check print a `.yup` file with more worked out, Lower
-prints the cells, and Package the parts of the xlsx file. [examples](examples) has seven files to
-start from.
-
-The same tool comes as one JavaScript file, which needs only a runtime with WebAssembly: Node 18
-or later, Deno, Bun or a browser.
-
-    cargo run -p yup-bundle
-    node target/yup.mjs build examples/forecast.yup -o target/forecast.xlsx
-
-Run by Node, `target/yup.mjs` takes the same commands as `yup`, with the same messages and exit
-codes, and writes the same bytes. Imported, it is a library, typed by `target/yup.d.ts`:
-
-```js
-import { build, YupError } from "./yup.mjs";
-
-const { xlsx, warnings } = await build(source, { "history.csv": history });
-```
-
-The bundler also writes `target/yup.html`, the same tool as one page: open it from disk, with no
-server and no network, paste or open a `.yup` file, add the CSV files it names, and build and
-download the workbook. Each problem it reports goes to its place in the source when clicked.
 
 ## Stage 1: scope
 
@@ -155,7 +118,7 @@ per member of a set of unknown size (it becomes one two-dimensional range instea
 - The crates are `yup-core` and `yup-cli`, and the command is `yup`: provisional names until open
   question 12 is settled. The command has `build`, `check` and `show <step>`; how it finds input
   files is part of open question 4.
-- The project is licensed under Apache-2.0 (see [LICENSE](LICENSE)).
+- The project is licensed under Apache-2.0 (see [LICENSE](../LICENSE)).
 - `.yup` is a language of its own, with its own lexer and parser, and is designed to be easy to
   lex.
 - The core syntax is S3, like Haskell or ML, decided on 2026-11-03. See [Core syntax](#core-syntax).
@@ -481,7 +444,7 @@ replaced by their values. Running the pipeline on it gives it back unchanged.
 ## Built for 0.2
 
 Decided while building 0.2, from 2026-11-03, where the decisions above left something open. Each
-is provisional. [docs/language.md](docs/language.md) describes 0.2 as it is built.
+is provisional. [language.md](language.md) describes 0.2 as it is built.
 
 - **The first line** is `yup 0.2`, and a reader of 0.2 refuses 0.1: no file in 0.1 is kept.
   *Replaced 2026-11-17: there is no version line; see below.*
@@ -660,7 +623,7 @@ is provisional. [docs/language.md](docs/language.md) describes 0.2 as it is buil
 ## Built for 0.3: tables and lambdas
 
 Designed 2026-11-17 and built by 2026-11-18, with what was decided while building recorded
-beside each part. [docs/language.md](docs/language.md) describes 0.3 as it is built.
+beside each part. [language.md](language.md) describes 0.3 as it is built.
 
 0.2 can read a table and look values up in it, but nothing in it changes how many rows a range
 has once the data is known: there is no filter, sort, distinct or stack. Those are the
@@ -1323,7 +1286,7 @@ Where 0.1 or 0.2 gives an answer, it follows in italics; [Built for 0.1](#built-
 21. **Time aggregation:** rolling monthly ranges up to annual ones (`sum revenue by year`), which
     maps one size variable onto another.
 22. **The function library:** which of the app's functions stage 1 supports. *0.1: eighteen. 0.2:
-    the fifty in [docs/language.md](docs/language.md).*
+    the fifty in [language.md](language.md).*
 23. **Deterministic output:** does the same input always give byte-identical xlsx? *0.1 and 0.2:
     yes.*
 24. **Widths with another font:** a width in pixels is exact only with the default font, whose
