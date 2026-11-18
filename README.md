@@ -862,8 +862,11 @@ totals = map (\r -> sum_if (sales.region == r) sales.units) regions
   `by_column`, as `sum_rows` and `sum_columns` are, and as the app names BYROW and BYCOL. In
   `by down`, `down` could name either the rows or the way the results go.*
 - **L2. A lambda's parameters.** Each is a LAMBDA parameter in the workbook, with the `_xlpm.`
-  prefix, and follows the rules for names, as a `Lambda`'s do. Whether it may hide a binding of
-  the same name, as a `Lambda`'s parameter may.
+  prefix, and follows the rules for names, as a `Lambda`'s do. *Settled 2026-11-17: a lambda
+  inside an expression may not hide a name in the file, or another lambda's parameter around
+  it; the error asks for another name. It sits beside the bindings it uses, where a name that
+  meant two things in one line would be easy to misread. A `Lambda` binding's parameter may
+  still hide a binding, as in 0.2.*
 - **L3. Errors inside a lambda.** How a message names both the size of a range from outside the
   lambda and the size of a parameter, so that a mismatch between them is clear.
 
